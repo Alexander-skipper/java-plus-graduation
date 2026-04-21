@@ -1,0 +1,12 @@
+server:
+  port: 8080
+
+client:
+  url: http://localhost:9090
+
+spring:
+  datasource:
+    driverClassName: org.h2.Driver
+    url: jdbc:h2:mem:stat
+    username: main
+    password: main

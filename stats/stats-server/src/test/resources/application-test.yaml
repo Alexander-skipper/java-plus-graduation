@@ -1,0 +1,13 @@
+server:
+  port: 9090
+
+spring:
+  datasource:
+    driverClassName: org.h2.Driver
+    url: jdbc:h2:mem:stat
+    username: stats
+    password: stats
+
+sql:
+    init:
+        schema-locations: classpath:schema.sql
