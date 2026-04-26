@@ -1,14 +1,15 @@
-package ru.practicum;
+package ru.practicum.configserver;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.config.server.EnableConfigServer;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 @SpringBootApplication
+@EnableConfigServer
 @EnableDiscoveryClient
-public class StatsServer {
-
+public class ConfigServer {
     public static void main(String[] args) {
-        SpringApplication.run(StatsServer.class, args);
+        SpringApplication.run(ConfigServer.class, args);
     }
 }
