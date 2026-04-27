@@ -6,92 +6,13 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
-
         - id: main-service-admin
           uri: lb://main-service
           predicates:
-            - Path=/admin/**
-          filters:
-            - StripPrefix=0
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE
-                methods: GET,POST,PATCH,DELETE
+            - Path=/**
 
-        - id: main-service-public-categories
-          uri: lb://main-service
-          predicates:
-            - Path=/categories/**
-          filters:
-            - StripPrefix=0
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE
-                methods: GET
-
-        - id: main-service-public-compilations
-          uri: lb://main-service
-          predicates:
-            - Path=/compilations/**
-          filters:
-            - StripPrefix=0
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE
-                methods: GET
-
-        - id: main-service-public-events
-          uri: lb://main-service
-          predicates:
-            - Path=/events/**
-          filters:
-            - StripPrefix=0
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE
-                methods: GET
-
-        - id: main-service-private-users
-          uri: lb://main-service
-          predicates:
-            - Path=/users/**
-          filters:
-            - StripPrefix=0
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE
-                methods: GET,POST,PATCH
-
-
-        - id: stats-server-hit
-          uri: lb://stats-server
-          predicates:
-            - Path=/hit
-          filters:
-            - StripPrefix=0
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE
-                methods: POST
-
-        - id: stats-server-stats
-          uri: lb://stats-server
-          predicates:
-            - Path=/stats
-          filters:
-            - StripPrefix=0
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE
-                methods: GET
-
+server:
+  port: 8080
 
 logging:
   level:
