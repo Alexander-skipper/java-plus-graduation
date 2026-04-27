@@ -30,7 +30,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>ru.practicum.discovery-server.DiscoveryServer</mainClass>
+                    <mainClass>ru.practicum.discoveryserver.DiscoveryServer</mainClass>
                 </configuration>
                 <executions>
                     <execution>

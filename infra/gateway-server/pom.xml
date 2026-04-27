@@ -51,7 +51,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>ru.practicum.gateway-server.GatewayServer</mainClass>
+                    <mainClass>ru.practicum.gatewayserver.GatewayServer</mainClass>
                 </configuration>
                 <executions>
                     <execution>
