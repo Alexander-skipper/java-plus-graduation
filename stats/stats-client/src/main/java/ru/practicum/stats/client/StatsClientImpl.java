@@ -15,8 +15,6 @@ import ru.practicum.dto.EndpointHitDto;
 import ru.practicum.dto.ViewStatsDto;
 
 import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -55,13 +53,18 @@ public class StatsClientImpl implements StatsClient {
     @Override
     public void hit(EndpointHitDto hit) {
         URI uri = makeUri("/hit");
-        restClient.post()
-                .uri(uri)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(hit)
-                .retrieve()
-                .toBodilessEntity();
-        log.debug("Запрос hit отправлен в stats-server: {}", uri);
+        try {
+            restClient.post()
+                    .uri(uri)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(hit)
+                    .retrieve()
+                    .toBodilessEntity();
+            log.debug("Запрос hit отправлен в stats-server: {}, тело: {}", uri, hit);
+        } catch (Exception e) {
+            log.error("Ошибка при отправке hit в stats-server: {}", e.getMessage(), e);
+            throw new RuntimeException("Не удалось отправить hit в сервис статистики", e);
+        }
     }
 
     @Override
@@ -70,42 +73,52 @@ public class StatsClientImpl implements StatsClient {
                                        List<String> uris,
                                        boolean unique) {
         UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/stats")
-                .queryParam("start", URLEncoder.encode(start.format(formatter), StandardCharsets.UTF_8))
-                .queryParam("end", URLEncoder.encode(end.format(formatter), StandardCharsets.UTF_8))
+                .queryParam("start", start.format(formatter))
+                .queryParam("end", end.format(formatter))
                 .queryParam("unique", unique);
 
         if (uris != null && !uris.isEmpty()) {
             for (String uri : uris) {
-                builder.queryParam("uris", URLEncoder.encode(uri, StandardCharsets.UTF_8));
+                builder.queryParam("uris", uri);
             }
         }
 
         URI fullUri = makeUri(builder.toUriString());
 
-        ViewStatsDto[] response = restClient.get()
-                .uri(fullUri)
-                .retrieve()
-                .body(ViewStatsDto[].class);
-
-        log.debug("Получена статистика от stats-server: {}", fullUri);
-
-        return response == null ? List.of() : Arrays.asList(response);
-    }
-
-    private ServiceInstance getInstance() {
         try {
-            List<ServiceInstance> instances = discoveryClient.getInstances(statsServiceId);
-            if (instances == null || instances.isEmpty()) {
-                throw new RuntimeException("Экземпляры сервиса не найдены для: " + statsServiceId);
-            }
-            return instances.getFirst();
-        } catch (Exception exception) {
-            throw new RuntimeException("Ошибка обнаружения сервиса статистики с id: " + statsServiceId, exception);
+            ViewStatsDto[] response = restClient.get()
+                    .uri(fullUri)
+                    .retrieve()
+                    .body(ViewStatsDto[].class);
+
+            log.debug("Получена статистика от stats-server: {}, ответ: {}", fullUri,
+                    response == null ? "[]" : Arrays.toString(response));
+
+            return response == null ? List.of() : Arrays.asList(response);
+        } catch (Exception e) {
+            log.error("Ошибка при получении статистики из stats-server: {}", e.getMessage(), e);
+            return List.of();
         }
     }
 
+    private ServiceInstance getInstance() {
+        List<ServiceInstance> instances = discoveryClient.getInstances(statsServiceId);
+        if (instances == null || instances.isEmpty()) {
+            throw new RuntimeException("Экземпляры сервиса не найдены для: " + statsServiceId);
+        }
+        ServiceInstance instance = instances.get(0);
+        log.debug("Найден инстанс {}: {}:{}", statsServiceId, instance.getHost(), instance.getPort());
+        return instance;
+    }
+
+
     private URI makeUri(String path) {
-        ServiceInstance instance = retryTemplate.execute(ctx -> getInstance());
-        return URI.create("http://" + instance.getHost() + ":" + instance.getPort() + path);
+        return retryTemplate.execute(ctx -> {
+            ServiceInstance instance = getInstance();
+            String fullPath = path.startsWith("/") ? path : "/" + path;
+            URI uri = URI.create("http://" + instance.getHost() + ":" + instance.getPort() + fullPath);
+            log.debug("Создан URI: {}", uri);
+            return uri;
+        });
     }
 }
