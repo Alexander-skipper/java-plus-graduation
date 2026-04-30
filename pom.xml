@@ -11,23 +11,44 @@
 	</parent>
 
 	<name>Explore With Me</name>
-    <modules>
-        <module>main-service</module>
-        <module>stats</module>
-        <module>stats/stats-dto</module>
-        <module>stats/stats-server</module>
-        <module>stats/stats-client</module>
-    </modules>
-
-    <groupId>ru.practicum</groupId>
+	<groupId>ru.practicum</groupId>
 	<artifactId>explore-with-me</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
+    <modules>
+        <module>stats</module>
+        <module>core</module>
+		<module>infra</module>
+    </modules>
+
 	<properties>
 		<java.version>21</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<spring-cloud.version>2023.0.3</spring-cloud.version>
+		<lombok.version>1.18.34</lombok.version>
+		<mapstruct.version>1.6.3</mapstruct.version>
+		<lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
 	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-dependencies</artifactId>
+				<version>3.3.0</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<build>
 		<pluginManagement>

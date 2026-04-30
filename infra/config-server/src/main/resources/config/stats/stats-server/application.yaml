@@ -1,0 +1,20 @@
+server:
+  port: 0
+  url: http://localhost:${server.port}
+
+spring:
+  datasource:
+    driverClassName: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:6541/stats
+    username: stats
+    password: stats
+  jpa:
+    database: POSTGRESQL
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+
+sql:
+  init:
+    mode: always
+    schema-locations: classpath:schema.sql

@@ -17,7 +17,7 @@ import static ru.practicum.dto.Const.TIMESTAMP_PATTERN;
 @Builder
 public class EndpointHitDto {
 
-    @NotNull
+
     private Long id;
 
     @NotNull

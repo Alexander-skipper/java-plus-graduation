@@ -27,7 +27,7 @@ public interface StatsRepository extends JpaRepository<EndpointHit, Long> {
     @Query("SELECT NEW ru.practicum.dto.ViewStatsDto(h.app, h.uri, COUNT(DISTINCT h.ip)) " +
             "FROM EndpointHit h " +
             "WHERE h.timestamp BETWEEN :startTime AND :endTime " +
-            "AND h.uri IN :uris " +
+            "AND (:uris IS NULL OR h.uri IN :uris)" +
             "GROUP BY h.app, h.uri " +
             "ORDER BY COUNT(DISTINCT h.ip) DESC")
     List<ViewStatsDto> getUniqueStatsWithUris(LocalDateTime startTime, LocalDateTime endTime, List<String> uris);
@@ -35,7 +35,7 @@ public interface StatsRepository extends JpaRepository<EndpointHit, Long> {
     @Query("SELECT NEW ru.practicum.dto.ViewStatsDto(h.app, h.uri, COUNT(h)) " +
             "FROM EndpointHit h " +
             "WHERE h.timestamp BETWEEN :startTime AND :endTime " +
-            "AND h.uri IN :uris " +
+            "AND (:uris IS NULL OR h.uri IN :uris)" +
             "GROUP BY h.app, h.uri " +
             "ORDER BY COUNT(h) DESC")
     List<ViewStatsDto> getNotUniqueStatsWithUris(LocalDateTime startTime, LocalDateTime endTime, List<String> uris);
