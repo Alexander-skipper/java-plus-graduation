@@ -24,7 +24,7 @@ eureka:
 
 logging:
   level:
-    org.springframework.cloud.config: DEBUG
-    org.springframework.cloud.config.server: DEBUG
-    org.springframework.boot.context.config: TRACE
-    org.springframework.core.io.support: DEBUG
+    org.springframework.cloud.config: INFO
+    org.springframework.cloud.config.server: INFO
+    org.springframework.boot.context.config: INFO
+    org.springframework.core.io.support: INFO

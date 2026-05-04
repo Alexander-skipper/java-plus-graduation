@@ -1,0 +1,28 @@
+server:
+  port: 0
+
+
+spring:
+  datasource:
+    driverClassName: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:6545/location
+    username: location
+    password: location
+
+  jpa:
+    show-sql: true
+    hibernate:
+    ddl-auto: update
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+  logging:
+    level.org.springframework:
+      orm.jpa: INFO
+      orm.jpa.JpaTransactionManager: INFO
+      transaction: INFO
+      transaction.interceptor: INFO
+      ru.practicum: INFO
