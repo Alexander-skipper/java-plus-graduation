@@ -13,8 +13,10 @@ public interface LocationRepository extends JpaRepository<Location, Long> {
 
     @Query(value = """
         SELECT l.* FROM locations l
-        WHERE distance(:lat, :lon, l.latitude, l.longitude) <= COALESCE(l.radius, 1.0)
+        WHERE distance(:lat, :lon, l.latitude, l.longitude) <= COALESCE(:radius, l.radius, 1.0)
         """, nativeQuery = true)
     List<Location> findLocationsContainingPoint(@Param("lat") Double lat,
-                                                @Param("lon") Double lon);
+                                                @Param("lon") Double lon,
+                                                @Param("radius") Double radius);
+
 }

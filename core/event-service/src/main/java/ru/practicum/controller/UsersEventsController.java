@@ -7,9 +7,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.dto.event.*;
-//import ru.practicum.dto.request.ParticipationRequestDto;
 import ru.practicum.service.event.EventService;
-//import ru.practicum.service.request.ParticipationRequestService;
 
 import java.util.List;
 
@@ -20,7 +18,6 @@ import java.util.List;
 @Valid
 public class UsersEventsController {
     private final EventService service;
-   // private final ParticipationRequestService requestService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -54,22 +51,4 @@ public class UsersEventsController {
         log.info("PATCH /users/{}/events/{} - запрос на обновление события {}", userId, eventId, req);
         return service.update(userId, eventId, req);
     }
-
-   /* @GetMapping("/{eventId}/requests")
-    @ResponseStatus(HttpStatus.OK)
-    public List<ParticipationRequestDto> getRequests(@PathVariable Long userId,
-                                                     @PathVariable Long eventId) {
-        log.info("Получение информации о запросах на участие в событии текущего пользователя");
-        return requestService.getUsersRequestsForUserEvent(userId, eventId);
-    }
-
-    @PatchMapping("/{eventId}/requests")
-    @ResponseStatus(HttpStatus.OK)
-    public EventRequestStatusUpdateResult getRequests(@PathVariable Long userId,
-                                                      @PathVariable Long eventId,
-                                                      @RequestBody EventRequestStatusUpdateRequest req) {
-        log.info("Новый статус для заявок на участие в событии {} пользователя {}",eventId, userId);
-        return requestService.updateRequestStatus(userId, eventId, req);
-    }*/
-
 }

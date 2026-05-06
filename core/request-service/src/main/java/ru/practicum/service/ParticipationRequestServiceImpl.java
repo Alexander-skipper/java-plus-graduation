@@ -28,7 +28,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional(readOnly = true)
+@Transactional
 @AllArgsConstructor
 @Slf4j
 public class ParticipationRequestServiceImpl implements ParticipationRequestService {
@@ -83,6 +83,7 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ParticipationRequestDto> getOtherUsersEventsRequests(Long userId) {
         log.info("Service get requests for user {}", userId);
 
@@ -118,6 +119,7 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ParticipationRequestDto> getUsersRequestsForUserEvent(Long userId, Long eventId) {
         log.info("Service get requests for user {} and eventId {}", userId, eventId);
 

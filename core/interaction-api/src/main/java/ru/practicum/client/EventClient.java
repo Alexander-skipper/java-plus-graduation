@@ -22,9 +22,9 @@ public interface EventClient {
                                               @RequestParam("from") int from,
                                               @RequestParam("size") int size);
 
-    @PatchMapping("/events/{eventId}/increment")
+    @PatchMapping("/internal/events/{eventId}/increment-requests")
     void incrementConfirmedRequests(@PathVariable("eventId") Long eventId);
 
-    @PatchMapping("/events/{eventId}/decrement")
+    @PatchMapping("/internal/events/{eventId}/decrement-requests")
     void decrementConfirmedRequests(@PathVariable("eventId") Long eventId);
 }

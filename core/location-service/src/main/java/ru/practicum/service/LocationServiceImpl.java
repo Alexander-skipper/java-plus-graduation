@@ -94,7 +94,7 @@ public class LocationServiceImpl implements LocationService {
     @Override
     public List<ShortLocationResponseDto> findLocationsNear(Double lat, Double lon, Double radius) {
         log.info("Find locations near lat={}, lon={}, radius={}", lat, lon, radius);
-        List<Location> locations = repository.findLocationsContainingPoint(lat, lon);
+        List<Location> locations = repository.findLocationsContainingPoint(lat, lon, radius);
         return locations.stream()
                 .map(mapper::toShortResponseDto)
                 .collect(Collectors.toList());
