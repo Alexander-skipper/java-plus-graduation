@@ -10,29 +10,20 @@ import java.util.List;
 public interface EventService {
 
     EventResponseDto create(Long userId, NewEventRequestDto req);
-
-    List<ShortEventResponseDto> find(EventSearchCriteria criteria) throws Exception;
-
-    List<ShortEventResponseDto> getAll(Long userId, Pageable pageable);
-
-    EventResponseDto get(Long eventId);
-
-    EventResponseDto get(Long userId, Long eventId);
-
     EventResponseDto update(Long userId, Long eventId, UpdateEventRequestDto req);
+    List<ShortEventResponseDto> getUserEvents(Long userId, Pageable pageable);
+    EventResponseDto getUserEvent(Long userId, Long eventId);
+
+    List<ShortEventResponseDto> find(EventSearchCriteria criteria);
+    EventResponseDto getPublicEvent(Long eventId);
+    List<ShortEventResponseDto> findEventsByLocation(Long locationId, Pageable pageable);
+    List<ShortEventResponseDto> findEventsNear(Double lat, Double lon, Double radius, Pageable pageable);
 
     AdminEventResponseDto updateAdminEvent(Long eventId, UpdateEventAdminRequest req);
-
     List<AdminEventResponseDto> findAdminEvents(List<Long> users, List<EventState> states,
                                                 List<Long> categories, LocalDateTime rangeStart,
                                                 LocalDateTime rangeEnd, Pageable pageable);
 
-    List<ShortEventResponseDto> findEventsByLocation(Long locationId, Pageable pageable);
-
-    List<ShortEventResponseDto> findEventsNear(Double lat, Double lon, Double radius, Pageable pageable);
-
-    void incrementConfirmedRequests(Long eventId);
-
-    void decrementConfirmedRequests(Long eventId);
-
+    EventResponseDto getEventById(Long eventId);
+    boolean existsById(Long eventId);
 }

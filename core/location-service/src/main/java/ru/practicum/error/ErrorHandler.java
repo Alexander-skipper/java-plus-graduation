@@ -63,4 +63,30 @@ public class ErrorHandler {
                 .timestamp(LocalDateTime.now())
                 .build();
     }
+
+    @ExceptionHandler(SecurityException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiError handleSecurityException(SecurityException e) {
+        log.warn("SecurityException: {}", e.getMessage(), e);
+        return ApiError.builder()
+                .status("FORBIDDEN")
+                .reason("Access denied.")
+                .message(e.getMessage())
+                .errors(List.of())
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ApiError handleException(Exception e) {
+        log.error("Internal server error: {}", e.getMessage(), e);
+        return ApiError.builder()
+                .status("INTERNAL_SERVER_ERROR")
+                .reason("Internal server error. Please contact support.")
+                .message("An unexpected error occurred: " + e.getMessage())
+                .errors(List.of())
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
 }

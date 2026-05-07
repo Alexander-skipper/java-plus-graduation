@@ -2,27 +2,42 @@ package ru.practicum.client;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.practicum.dto.user.NewUserRequestDto;
 import ru.practicum.dto.user.UserDto;
 
-@Slf4j
+import java.util.Collections;
+import java.util.List;
+
 @Component
+@Slf4j
 public class UserClientFallback implements UserClient {
 
     @Override
-    public UserDto getUser(Long userId) {
-        log.warn("User-service unavailable, returning fallback for userId: {}", userId);
-
-        return UserDto.builder()
-                .id(userId)
-                .name("Unknown User")
-                .email("unknown@example.com")
-                .build();
+    public List<UserDto> getUsers(List<Long> ids, int from, int size) {
+        log.warn("User service is unavailable. Returning empty list.");
+        return Collections.emptyList();
     }
 
     @Override
-    public boolean userExists(Long userId) {
-        log.warn("User-service unavailable, assuming user exists for userId: {}", userId);
+    public UserDto createUser(NewUserRequestDto userRequestDto) {
+        log.warn("User service is unavailable. Cannot create user.");
+        throw new RuntimeException("User service is unavailable");
+    }
 
-        return true;
+    @Override
+    public void deleteUser(Long userId) {
+        log.warn("User service is unavailable. Cannot delete user.");
+    }
+
+    @Override
+    public UserDto getUserById(Long userId) {
+        log.warn("User service is unavailable. Cannot get user by id {}.", userId);
+        return null;
+    }
+
+    @Override
+    public Boolean userExists(Long userId) {
+        log.warn("User service is unavailable. Returning false for user existence check.");
+        return false;
     }
 }

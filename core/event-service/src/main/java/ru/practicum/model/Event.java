@@ -67,7 +67,7 @@ public class Event {
     private Double lon;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "VARCHAR(20) DEFAULT WAITING")
+    @Column(columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
     private EventState state;
 
     @Column(name = "published_on")
@@ -75,6 +75,9 @@ public class Event {
 
     @Column(name = "user_id")
     private Long initiatorId;
+
+    @Column(name = "initiator_name")
+    private String initiatorName;
 
     @ManyToOne
     @JoinColumn(name = "category_id")
@@ -86,7 +89,7 @@ public class Event {
     @Override
     public String toString() {
         return "Event{" +
-                ", id=" + id +
+                "id=" + id +
                 ", title=" + title +
                 ", description=" + description +
                 ", annotation=" + annotation +

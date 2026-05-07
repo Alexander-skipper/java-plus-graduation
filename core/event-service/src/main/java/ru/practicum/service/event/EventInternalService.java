@@ -9,28 +9,30 @@ import ru.practicum.repository.EventRepository;
 
 import java.util.NoSuchElementException;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
+@Transactional
 public class EventInternalService {
 
     private final EventRepository eventRepository;
 
-    @Transactional
     public void incrementConfirmedRequests(Long eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NoSuchElementException("Event with id " + eventId + " not found"));
+        Event event = findEvent(eventId);
         event.setConfirmedRequests(event.getConfirmedRequests() + 1);
         eventRepository.save(event);
-        log.info("Incremented confirmed requests for event {} to {}", eventId, event.getConfirmedRequests());
+        log.info("Incremented confirmed requests for event {}", eventId);
     }
 
-    @Transactional
     public void decrementConfirmedRequests(Long eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NoSuchElementException("Event with id " + eventId + " not found"));
-        event.setConfirmedRequests(Math.max(0, event.getConfirmedRequests() - 1));
+        Event event = findEvent(eventId);
+        event.setConfirmedRequests(event.getConfirmedRequests() - 1);
         eventRepository.save(event);
-        log.info("Decremented confirmed requests for event {} to {}", eventId, event.getConfirmedRequests());
+        log.info("Decremented confirmed requests for event {}", eventId);
+    }
+
+    private Event findEvent(Long eventId) {
+        return eventRepository.findById(eventId)
+                .orElseThrow(() -> new NoSuchElementException("Event with id " + eventId + " not found"));
     }
 }

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import org.hibernate.validator.constraints.Length;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 @Getter
@@ -27,6 +28,9 @@ public class Compilation {
 
     @Column
     private Boolean pinned = false;
+
+    @Column(name = "created_on")
+    private LocalDateTime createdOn = LocalDateTime.now();
 
     @ManyToMany
     @JoinTable(

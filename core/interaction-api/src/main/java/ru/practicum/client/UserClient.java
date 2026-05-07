@@ -2,17 +2,28 @@ package ru.practicum.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.dto.user.NewUserRequestDto;
 import ru.practicum.dto.user.UserDto;
 
-@FeignClient(
-        name = "user-service",
-        fallback = UserClientFallback.class
-)
+import java.util.List;
+
+@FeignClient(name = "user-service", fallback = UserClientFallback.class)
 public interface UserClient {
 
-    @GetMapping("/internal/users/{userId}")
-    UserDto getUser(@PathVariable("userId") Long userId);
+    @GetMapping("/admin/users")
+    List<UserDto> getUsers(@RequestParam(required = false) List<Long> ids,
+                           @RequestParam(defaultValue = "0") int from,
+                           @RequestParam(defaultValue = "10") int size);
 
-    @GetMapping("/internal/users/exists/{userId}")
-    boolean userExists(@PathVariable("userId") Long userId);
+    @PostMapping("/admin/users")
+    UserDto createUser(@RequestBody NewUserRequestDto userRequestDto);
+
+    @DeleteMapping("/admin/users/{userId}")
+    void deleteUser(@PathVariable Long userId);
+
+    @GetMapping("/internal/users/{userId}")
+    UserDto getUserById(@PathVariable Long userId);
+
+    @GetMapping("/internal/users/{userId}/exists")
+    Boolean userExists(@PathVariable Long userId);
 }

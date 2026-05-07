@@ -13,7 +13,6 @@ import ru.practicum.client.LocationClient;
 import ru.practicum.client.UserClient;
 import ru.practicum.dto.ViewStatsDto;
 import ru.practicum.dto.event.*;
-import ru.practicum.dto.location.LocationResponseDto;
 import ru.practicum.dto.location.ShortLocationResponseDto;
 import ru.practicum.dto.user.UserDto;
 import ru.practicum.dto.user.UserShortDto;
@@ -59,7 +58,7 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public EventResponseDto get(Long eventId) {
+    public EventResponseDto getPublicEvent(Long eventId) {
         Event event = eventRepository.findByIdAndState(eventId, EventState.PUBLISHED)
                 .orElseThrow(() -> new NoSuchElementException("Event with id " + eventId + " notFound"));
         log.info("Найдено событие {}", event);
@@ -72,7 +71,7 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public EventResponseDto get(Long userId, Long eventId) {
+    public EventResponseDto getUserEvent(Long userId, Long eventId) {
         getUserFromClient(userId);
         Event event = findEvent(eventId);
 
@@ -83,7 +82,7 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public List<ShortEventResponseDto> getAll(Long userId, Pageable pageable) {
+    public List<ShortEventResponseDto> getUserEvents(Long userId, Pageable pageable) {
         getUserFromClient(userId);
 
         return eventRepository.findAllByInitiatorId(userId, pageable)
@@ -217,31 +216,29 @@ public class EventServiceImpl implements EventService {
                 .collect(Collectors.toList());
     }
 
+
     @Override
-    @Transactional
-    public void incrementConfirmedRequests(Long eventId) {
-        Event event = findEvent(eventId);
-        event.setConfirmedRequests(event.getConfirmedRequests() + 1);
-        eventRepository.save(event);
-        log.info("Incremented confirmed requests for event {}", eventId);
+    public boolean existsById(Long eventId) {
+        return eventRepository.existsById(eventId);
     }
 
     @Override
-    @Transactional
-    public void decrementConfirmedRequests(Long eventId) {
+    public EventResponseDto getEventById(Long eventId) {
         Event event = findEvent(eventId);
-        event.setConfirmedRequests(event.getConfirmedRequests() - 1);
-        eventRepository.save(event);
-        log.info("Decremented confirmed requests for event {}", eventId);
+        return mapper.eventToEventResponseDto(event, getUserShortDto(event.getInitiatorId()));
     }
 
     @Override
     public List<ShortEventResponseDto> findEventsByLocation(Long locationId, Pageable pageable) {
         log.info("Finding events for location id: {}", locationId);
 
-        LocationResponseDto location = locationClient.getLocation(locationId);
+        ShortLocationResponseDto location = locationClient.getLocation(locationId);
         if (location == null) {
             throw new NoSuchElementException("Location with id " + locationId + " not found");
+        }
+
+        if (location.getLatitude() == null || location.getLongitude() == null) {
+            throw new IllegalArgumentException("Location " + locationId + " has invalid coordinates");
         }
 
         List<Event> events = eventRepository.findEventsWithinLocationRadius(
@@ -408,9 +405,10 @@ public class EventServiceImpl implements EventService {
         return event;
     }
 
+
     private UserDto getUserFromClient(Long userId) {
         try {
-            UserDto user = userClient.getUser(userId);
+            UserDto user = userClient.getUserById(userId);
             if (user == null) {
                 throw new NoSuchElementException("User with id " + userId + " not found");
             }

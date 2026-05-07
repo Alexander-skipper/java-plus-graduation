@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.ResourceAccessException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -58,6 +59,31 @@ public class ErrorHandler {
         return ApiError.builder()
                 .status("BAD_REQUEST")
                 .reason("Incorrectly made request.")
+                .message(e.getMessage())
+                .errors(List.of())
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    @ExceptionHandler(ResourceAccessException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiError handleForbiddenRequest(Exception e) {
+        return ApiError.builder()
+                .status("FORBIDDEN")
+                .reason("Access denied.")
+                .message(e.getMessage())
+                .errors(List.of())
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ApiError handleException(Exception e) {
+        log.error("Internal server error: {}", e.getMessage(), e);
+        return ApiError.builder()
+                .status("INTERNAL_SERVER_ERROR")
+                .reason("Internal server error.")
                 .message(e.getMessage())
                 .errors(List.of())
                 .timestamp(LocalDateTime.now())

@@ -205,7 +205,7 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
 
     private UserDto getUserFromClient(Long userId) {
         try {
-            UserDto user = userClient.getUser(userId);
+            UserDto user = userClient.getUserById(userId);
             if (user == null) {
                 throw new NoSuchElementException("User with id " + userId + " not found");
             }

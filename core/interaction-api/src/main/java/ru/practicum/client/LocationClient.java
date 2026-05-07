@@ -1,25 +1,24 @@
 package ru.practicum.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.*;
-import ru.practicum.dto.location.LocationResponseDto;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import ru.practicum.dto.location.ShortLocationResponseDto;
 
 import java.util.List;
 
-@FeignClient(
-        name = "location-service",
-        fallback = LocationClientFallback.class
-)
+@FeignClient(name = "location-service", fallback = LocationClientFallback.class)
 public interface LocationClient {
 
     @GetMapping("/internal/locations/{locationId}")
-    LocationResponseDto getLocation(@PathVariable("locationId") Long locationId);
+    ShortLocationResponseDto getLocation(@PathVariable Long locationId);
 
     @GetMapping("/internal/locations/near")
-    List<ShortLocationResponseDto> findLocationsNear(
-            @RequestParam("lat") Double lat,
-            @RequestParam("lon") Double lon,
-            @RequestParam("radius") Double radius
-    );
+    List<ShortLocationResponseDto> findLocationsNear(@RequestParam Double lat,
+                                                     @RequestParam Double lon,
+                                                     @RequestParam Double radius);
+
+    @GetMapping("/internal/locations/{locationId}/exists")
+    Boolean locationExists(@PathVariable Long locationId);
 }

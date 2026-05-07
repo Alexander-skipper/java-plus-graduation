@@ -22,7 +22,7 @@ public class InternalLocationController {
     @ResponseStatus(HttpStatus.OK)
     public LocationResponseDto getLocation(@PathVariable Long locationId) {
         log.info("Internal request: get location by id {}", locationId);
-        return locationService.findByIdFull(locationId);  // УЖЕ ЕСТЬ в LocationService
+        return locationService.findByIdFull(locationId);
     }
 
     @GetMapping("/near")

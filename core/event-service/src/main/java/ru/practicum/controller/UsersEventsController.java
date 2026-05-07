@@ -15,7 +15,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/users/{userId}/events")
 @RequiredArgsConstructor
-@Valid
 public class UsersEventsController {
     private final EventService service;
 
@@ -28,19 +27,19 @@ public class UsersEventsController {
 
     @GetMapping("/{eventId}")
     @ResponseStatus(HttpStatus.OK)
-    public EventResponseDto get(@PathVariable Long userId,
-                                @PathVariable Long eventId) {
+    public EventResponseDto getUserEvent(@PathVariable Long userId,
+                                         @PathVariable Long eventId) {
         log.info("GET /users/{}/events/{} - запрос на получение события", userId, eventId);
-        return service.get(userId, eventId);
+        return service.getUserEvent(userId, eventId);
     }
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    public List<ShortEventResponseDto> getAll(@PathVariable Long userId,
+    public List<ShortEventResponseDto> getUserEvents(@PathVariable Long userId,
                                               @RequestParam(defaultValue = "0") int from,
                                               @RequestParam(defaultValue = "10") int size) {
         log.info("GET /users/{}/events - запрос на получение всех событий", userId);
-        return service.getAll(userId, PageRequest.of(from / size, size));
+        return service.getUserEvents(userId, PageRequest.of(from / size, size));
     }
 
     @PatchMapping("/{eventId}")
