@@ -44,7 +44,7 @@ public class PublicEventsController {
     @ResponseStatus(HttpStatus.OK)
     public EventResponseDto getEvent(@PathVariable Long id, HttpServletRequest req) {
         log.info("Get eventId by id {}", id);
-        EventResponseDto res = service.getEventById(id);
+        EventResponseDto res = service.getPublicEvent(id);
         saveHit(req);
         return res;
     }

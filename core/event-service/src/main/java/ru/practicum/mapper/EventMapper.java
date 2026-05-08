@@ -29,17 +29,20 @@ public interface EventMapper {
     @Mapping(target = "location.lat", source = "event.lat")
     @Mapping(target = "location.lon", source = "event.lon")
     @Mapping(target = "initiator", source = "userShort")
+    @Mapping(target = "views", ignore = true)
     ShortEventResponseDto eventToShortEventResponseDto(Event event, UserShortDto userShort);
 
     @Mapping(target = "id", source = "event.id")
     @Mapping(target = "location.lat", source = "event.lat")
     @Mapping(target = "location.lon", source = "event.lon")
     @Mapping(target = "initiator", source = "userShort")
+    @Mapping(target = "views", ignore = true)
     EventResponseDto eventToEventResponseDto(Event event, UserShortDto userShort);
 
     @Mapping(target = "id", source = "event.id")
     @Mapping(target = "initiator", source = "userShort")
     @Mapping(target = "location.lat", source = "event.lat")
     @Mapping(target = "location.lon", source = "event.lon")
+    @Mapping(target = "views", ignore = true)
     AdminEventResponseDto toAdminEventFullDto(Event event, UserShortDto userShort);
 }

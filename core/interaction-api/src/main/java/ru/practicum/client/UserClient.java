@@ -24,6 +24,6 @@ public interface UserClient {
     @GetMapping("/internal/users/{userId}")
     UserDto getUserById(@PathVariable Long userId);
 
-    @GetMapping("/internal/users/{userId}/exists")
+    @GetMapping("/internal/users/exists/{userId}")
     Boolean userExists(@PathVariable Long userId);
 }

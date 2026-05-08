@@ -286,7 +286,19 @@ public class EventServiceImpl implements EventService {
     @Override
     public EventResponseDto getEventById(Long eventId) {
         Event event = findEvent(eventId);
-        return mapper.eventToEventResponseDto(event, getUserShortDto(event.getInitiatorId()));
+
+        try {
+            Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
+            event.setConfirmedRequests(confirmedRequests.intValue());
+        } catch (Exception e) {
+            log.warn("Could not get confirmed requests for event {}: {}", eventId, e.getMessage());
+        }
+
+        EventResponseDto dto = mapper.eventToEventResponseDto(event, getUserShortDto(event.getInitiatorId()));
+        Long views = getViews(eventId);
+        dto.setViews(views);
+        dto.setConfirmedRequests(event.getConfirmedRequests());
+        return dto;
     }
 
     @Override
