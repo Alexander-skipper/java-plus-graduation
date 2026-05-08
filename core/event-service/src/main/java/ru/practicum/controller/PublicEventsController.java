@@ -33,8 +33,8 @@ public class PublicEventsController {
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    public List<ShortEventResponseDto> findAll(@ModelAttribute EventSearchCriteria criteria, HttpServletRequest req) throws Exception {
-       log.info("Find all events");
+    public List<ShortEventResponseDto> findAll(@ModelAttribute EventSearchCriteria criteria, HttpServletRequest req) {
+       log.info("Find all events with sort: {}", criteria.getSort());
        List<ShortEventResponseDto> res = service.find(criteria);
        saveHit(req);
        return res;

@@ -1,6 +1,5 @@
 package ru.practicum.dto.event;
 
-
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
@@ -66,7 +65,7 @@ public class EventSearchCriteria {
     }
 
     public boolean hasRangeEnd() {
-        return  rangeEnd != null;
+        return rangeEnd != null;
     }
 
     public boolean isOnlyAvailable() {
@@ -74,10 +73,13 @@ public class EventSearchCriteria {
     }
 
     public Sort getSort() {
+        if (sort == null) {
+            return Sort.by("eventDate").descending();
+        }
         return switch (sort) {
             case "EVENT_DATE" -> Sort.by("eventDate").descending();
             case "VIEWS" -> Sort.by("views").descending();
-            case null, default -> Sort.by("title").descending();
+            default -> Sort.by("eventDate").descending();
         };
     }
 }

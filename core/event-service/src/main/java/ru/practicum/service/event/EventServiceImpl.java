@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.ResourceAccessException;
 import ru.practicum.client.LocationClient;
+import ru.practicum.client.RequestClient;
 import ru.practicum.client.UserClient;
 import ru.practicum.dto.ViewStatsDto;
 import ru.practicum.dto.event.*;
@@ -39,6 +40,7 @@ public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
     private final UserClient userClient;
     private final LocationClient locationClient;
+    private final RequestClient requestClient;
     private final StatsClient statsClient;
 
     @Override
@@ -50,6 +52,7 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> new NoSuchElementException("Category with id " + req.getCategory() + " notFound"));
 
         Event newEvent = mapper.eventRequestToEvent(req, category, user);
+        newEvent.setConfirmedRequests(0);
 
         Event savedEvent = eventRepository.save(newEvent);
         log.info("Создано новое событие {} от пользователя {}", savedEvent, user);
@@ -61,11 +64,19 @@ public class EventServiceImpl implements EventService {
     public EventResponseDto getPublicEvent(Long eventId) {
         Event event = eventRepository.findByIdAndState(eventId, EventState.PUBLISHED)
                 .orElseThrow(() -> new NoSuchElementException("Event with id " + eventId + " notFound"));
-        log.info("Найдено событие {}", event);
 
+        try {
+            Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
+            event.setConfirmedRequests(confirmedRequests.intValue());
+        } catch (Exception e) {
+            log.warn("Could not get confirmed requests for event {}: {}", eventId, e.getMessage());
+        }
+
+        log.info("Найдено событие {}", event);
         Long views = getViews(eventId);
         EventResponseDto res = mapper.eventToEventResponseDto(event, getUserShortDto(event.getInitiatorId()));
         res.setViews(views);
+        res.setConfirmedRequests(event.getConfirmedRequests());
 
         return res;
     }
@@ -78,6 +89,13 @@ public class EventServiceImpl implements EventService {
         log.info("Найдено событие {}", event);
         checkPermission(event, userId);
 
+        try {
+            Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
+            event.setConfirmedRequests(confirmedRequests.intValue());
+        } catch (Exception e) {
+            log.warn("Could not get confirmed requests for event {}: {}", eventId, e.getMessage());
+        }
+
         return mapper.eventToEventResponseDto(event, getUserShortDto(userId));
     }
 
@@ -85,9 +103,29 @@ public class EventServiceImpl implements EventService {
     public List<ShortEventResponseDto> getUserEvents(Long userId, Pageable pageable) {
         getUserFromClient(userId);
 
-        return eventRepository.findAllByInitiatorId(userId, pageable)
-                .stream()
-                .map((event) -> mapper.eventToShortEventResponseDto(event, getUserShortDto(userId)))
+        List<Event> events = eventRepository.findAllByInitiatorId(userId, pageable);
+
+        if (events.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<Long, Integer> confirmedRequestsMap = new HashMap<>();
+        for (Event event : events) {
+            try {
+                Long count = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
+                confirmedRequestsMap.put(event.getId(), count.intValue());
+                event.setConfirmedRequests(count.intValue());
+            } catch (Exception e) {
+                log.warn("Could not get confirmed requests for event {}: {}", event.getId(), e.getMessage());
+            }
+        }
+
+        return events.stream()
+                .map((event) -> {
+                    ShortEventResponseDto dto = mapper.eventToShortEventResponseDto(event, getUserShortDto(userId));
+                    dto.setConfirmedRequests(confirmedRequestsMap.getOrDefault(event.getId(), 0));
+                    return dto;
+                })
                 .toList();
     }
 
@@ -100,29 +138,35 @@ public class EventServiceImpl implements EventService {
         }
 
         if (criteria.hasText()) {
-            predicate.and(QEvent.event.annotation.contains(criteria.getText())
-                    .or(QEvent.event.description.contains(criteria.getText())));
+            predicate.and(QEvent.event.annotation.containsIgnoreCase(criteria.getText())
+                    .or(QEvent.event.description.containsIgnoreCase(criteria.getText())));
         }
 
         if (criteria.hasPaid()) {
             predicate.and(QEvent.event.paid.eq(criteria.getPaid()));
         }
 
-        if (criteria.hasRangeStart()) {
-            predicate.and(QEvent.event.eventDate.goe(criteria.getRangeStart()));
-        }
-
-        if (criteria.hasRangeEnd()) {
-            if (criteria.hasRangeStart() && !criteria.getRangeEnd().isAfter(criteria.getRangeStart())) {
-                throw new IllegalArgumentException("Invalid rangeEnd");
+        LocalDateTime now = LocalDateTime.now();
+        if (!criteria.hasRangeStart() && !criteria.hasRangeEnd()) {
+            predicate.and(QEvent.event.eventDate.goe(now));
+        } else {
+            if (criteria.hasRangeStart()) {
+                predicate.and(QEvent.event.eventDate.goe(criteria.getRangeStart()));
             }
-            predicate.and(QEvent.event.eventDate.loe(criteria.getRangeEnd()));
+            if (criteria.hasRangeEnd()) {
+                if (criteria.hasRangeStart() && !criteria.getRangeEnd().isAfter(criteria.getRangeStart())) {
+                    throw new IllegalArgumentException("Invalid rangeEnd");
+                }
+                predicate.and(QEvent.event.eventDate.loe(criteria.getRangeEnd()));
+            }
         }
 
         if (criteria.isOnlyAvailable()) {
             predicate.and(QEvent.event.participantLimit.eq(0)
                     .or(QEvent.event.participantLimit.gt(QEvent.event.confirmedRequests)));
         }
+
+        predicate.and(QEvent.event.state.eq(EventState.PUBLISHED));
 
         Pageable pageable = PageRequest.of(criteria.getFrom() / criteria.getSize(),
                 criteria.getSize(),
@@ -140,11 +184,26 @@ public class EventServiceImpl implements EventService {
                 .collect(Collectors.toSet());
 
         Map<Long, UserShortDto> usersMap = getUsersShortDto(initiatorIds);
+        Map<Long, Long> viewsMap = getViewsForEvents(events.stream().map(Event::getId).collect(Collectors.toList()));
+
+        Map<Long, Integer> confirmedRequestsMap = new HashMap<>();
+        for (Event event : events) {
+            try {
+                Long count = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
+                confirmedRequestsMap.put(event.getId(), count.intValue());
+                event.setConfirmedRequests(count.intValue());
+            } catch (Exception e) {
+                log.warn("Could not get confirmed requests for event {}: {}", event.getId(), e.getMessage());
+            }
+        }
 
         return events.stream()
                 .map(event -> {
                     UserShortDto userShort = usersMap.get(event.getInitiatorId());
-                    return mapper.eventToShortEventResponseDto(event, userShort);
+                    ShortEventResponseDto dto = mapper.eventToShortEventResponseDto(event, userShort);
+                    dto.setViews(viewsMap.getOrDefault(event.getId(), 0L));
+                    dto.setConfirmedRequests(confirmedRequestsMap.getOrDefault(event.getId(), 0));
+                    return dto;
                 })
                 .collect(Collectors.toList());
     }
@@ -207,15 +266,17 @@ public class EventServiceImpl implements EventService {
                 .collect(Collectors.toSet());
 
         Map<Long, UserShortDto> usersMap = getUsersShortDto(initiatorIds);
+        Map<Long, Long> viewsMap = getViewsForEvents(events.stream().map(Event::getId).collect(Collectors.toList()));
 
         return events.stream()
                 .map(event -> {
                     UserShortDto userShort = usersMap.get(event.getInitiatorId());
-                    return mapper.toAdminEventFullDto(event, userShort);
+                    AdminEventResponseDto dto = mapper.toAdminEventFullDto(event, userShort);
+                    dto.setViews(viewsMap.getOrDefault(event.getId(), 0L));
+                    return dto;
                 })
                 .collect(Collectors.toList());
     }
-
 
     @Override
     public boolean existsById(Long eventId) {
@@ -336,16 +397,14 @@ public class EventServiceImpl implements EventService {
     public Event updateEventByAdmin(Event event, UpdateEventAdminRequest update) {
 
         if (update.getCategory() != null) {
-            Category category = categoryRepository.findById(Long.valueOf(update.getCategory()))
+            Category category = categoryRepository.findById(update.getCategory())
                     .orElseThrow(() -> new NoSuchElementException("Category with id " + update.getCategory() + " doesnt exist "));
             event.setCategory(category);
         }
 
         EventState state = event.getState();
         EventStateAction updateStateAction = update.getStateAction();
-        if (updateStateAction == null) {
-            updateStateAction = EventStateAction.PUBLISH_EVENT;
-        }
+
         if (updateStateAction == EventStateAction.PUBLISH_EVENT) {
             if (state != EventState.PENDING) {
                 throw new ConflictException("Only events with waiting status could be published");
@@ -360,10 +419,7 @@ public class EventServiceImpl implements EventService {
             if (state == EventState.PUBLISHED) {
                 throw new ConflictException("Published eventId could not be rejected");
             }
-            event.setState(EventState.REJECTED);
-
-        } else {
-            throw new NoSuchElementException("Unknown state action");
+            event.setState(EventState.CANCELED);
         }
 
         if (update.getTitle() != null) {
@@ -386,6 +442,9 @@ public class EventServiceImpl implements EventService {
         }
 
         if (update.getParticipantLimit() != null) {
+            if (update.getParticipantLimit() < 0) {
+                throw new IllegalArgumentException("Participant limit cannot be negative");
+            }
             event.setParticipantLimit(update.getParticipantLimit());
         }
 
@@ -404,7 +463,6 @@ public class EventServiceImpl implements EventService {
 
         return event;
     }
-
 
     private UserDto getUserFromClient(Long userId) {
         try {

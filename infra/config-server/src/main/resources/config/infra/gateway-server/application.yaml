@@ -6,26 +6,84 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
-        - id: user-service
+        - id: location_service_internal_route
+          uri: lb://location-service
+          predicates:
+            - Path=/internal/locations/**
+          filters:
+            - name: Retry
+              args:
+                retries: 3
+                statuses: INTERNAL_SERVER_ERROR, SERVICE_UNAVAILABLE
+
+        - id: location_service_private_route
+          uri: lb://location-service
+          predicates:
+            - Path=/users/{userId}/locations/**
+          filters:
+            - name: Retry
+              args:
+                retries: 3
+
+        - id: event_service_admin_route
+          uri: lb://event-service
+          predicates:
+            - Path=/admin/events/**, /admin/categories/**, /admin/compilations/**
+
+        - id: event_service_internal_route
+          uri: lb://event-service
+          predicates:
+            - Path=/internal/events/**
+
+        - id: event_service_private_route
+          uri: lb://event-service
+          predicates:
+            - Path=/users/{userId}/events/**
+
+        - id: event_service_public_route
+          uri: lb://event-service
+          predicates:
+            - Path=/events/**, /compilations/**, /categories/**
+
+        - id: request_service_internal_route
+          uri: lb://request-service
+          predicates:
+            - Path=/internal/requests/**
+
+        - id: request_service_count_route
+          uri: lb://request-service
+          predicates:
+            - Path=/requests/count
+          filters:
+            - name: Retry
+              args:
+                retries: 3
+                statuses: INTERNAL_SERVER_ERROR
+
+        - id: request_service_private_route
+          uri: lb://request-service
+          predicates:
+            - Path=/users/{userId}/events/{eventId}/requests/**, /users/{userId}/requests/**
+
+        - id: user_service_admin_route
           uri: lb://user-service
           predicates:
             - Path=/admin/users/**
-        - id: request-service
-          uri: lb://request-service
+
+        - id: user_service_internal_route
+          uri: lb://user-service
           predicates:
-            - Path=/users/**
-        - id: location-service-admin
-          uri: lb://location-service
+            - Path=/internal/users/**
+
+        - id: user_service_exists_route
+          uri: lb://user-service
           predicates:
-            - Path=/admin/location/**
-        - id: location-service-public
-          uri: lb://location-service
-          predicates:
-            - Path=/public/location/**
-        - id: event-service
-          uri: lb://event-service
-          predicates:
-            - Path=/events/**
+            - Path=/internal/users/{userId}/exists
+          filters:
+            - name: Retry
+              args:
+                retries: 3
+                statuses: NOT_FOUND, INTERNAL_SERVER_ERROR
 
 server:
   port: 8080
