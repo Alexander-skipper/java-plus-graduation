@@ -15,36 +15,38 @@ public class EventClientFallback implements EventClient {
 
     @Override
     public EventResponseDto getEvent(Long eventId) {
-        log.warn("Event service is unavailable. Cannot get event by id {}. Returning null.", eventId);
-        return null;
+        log.error("Event service is unavailable. Cannot get event by id {}.", eventId);
+        throw new RuntimeException("Event service is unavailable");
     }
 
     @Override
     public Boolean eventExists(Long eventId) {
-        log.warn("Event service is unavailable. Returning false for event existence check.");
-        return false;
+        log.error("Event service is unavailable. Cannot check event existence.");
+        throw new RuntimeException("Event service is unavailable");
     }
 
     @Override
     public void incrementConfirmedRequests(Long eventId) {
-        log.warn("Event service is unavailable. Cannot increment confirmed requests for event {}.", eventId);
+        log.error("Event service is unavailable. Cannot increment confirmed requests for event {}.", eventId);
+        throw new RuntimeException("Event service is unavailable");
     }
 
     @Override
     public void decrementConfirmedRequests(Long eventId) {
-        log.warn("Event service is unavailable. Cannot decrement confirmed requests for event {}.", eventId);
+        log.error("Event service is unavailable. Cannot decrement confirmed requests for event {}.", eventId);
+        throw new RuntimeException("Event service is unavailable");
     }
 
     @Override
     public CategoryDto getCategory(Long catId) {
-        log.warn("Event service is unavailable. Cannot get category by id {}. Returning null.", catId);
-        return null;
+        log.error("Event service is unavailable. Cannot get category by id {}.", catId);
+        throw new RuntimeException("Event service is unavailable");
     }
 
     @Override
     public Boolean categoryExists(Long catId) {
-        log.warn("Event service is unavailable. Returning false for category existence check.");
-        return false;
+        log.error("Event service is unavailable. Cannot check category existence.");
+        throw new RuntimeException("Event service is unavailable");
     }
 
     @Override
@@ -55,7 +57,7 @@ public class EventClientFallback implements EventClient {
 
     @Override
     public CompilationDto getCompilation(Long compId) {
-        log.warn("Event service is unavailable. Cannot get compilation by id {}. Returning null.", compId);
-        return null;
+        log.error("Event service is unavailable. Cannot get compilation by id {}.", compId);
+        throw new RuntimeException("Event service is unavailable");
     }
 }

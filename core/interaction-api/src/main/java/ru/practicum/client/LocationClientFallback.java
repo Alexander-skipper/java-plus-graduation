@@ -13,8 +13,8 @@ public class LocationClientFallback implements LocationClient {
 
     @Override
     public ShortLocationResponseDto getLocation(Long locationId) {
-        log.warn("Location service is unavailable. Cannot get location by id {}. Returning null.", locationId);
-        return null;
+        log.error("Location service is unavailable. Cannot get location by id {}.", locationId);
+        throw new RuntimeException("Location service is unavailable");
     }
 
     @Override
@@ -25,7 +25,7 @@ public class LocationClientFallback implements LocationClient {
 
     @Override
     public Boolean locationExists(Long locationId) {
-        log.warn("Location service is unavailable. Returning false for location existence check.");
-        return false;
+        log.error("Location service is unavailable. Cannot check location existence.");
+        throw new RuntimeException("Location service is unavailable");
     }
 }

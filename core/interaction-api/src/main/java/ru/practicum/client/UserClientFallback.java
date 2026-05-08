@@ -20,24 +20,25 @@ public class UserClientFallback implements UserClient {
 
     @Override
     public UserDto createUser(NewUserRequestDto userRequestDto) {
-        log.warn("User service is unavailable. Cannot create user.");
+        log.error("User service is unavailable. Cannot create user.");
         throw new RuntimeException("User service is unavailable");
     }
 
     @Override
     public void deleteUser(Long userId) {
-        log.warn("User service is unavailable. Cannot delete user.");
+        log.error("User service is unavailable. Cannot delete user.");
+        throw new RuntimeException("User service is unavailable");
     }
 
     @Override
     public UserDto getUserById(Long userId) {
-        log.warn("User service is unavailable. Cannot get user by id {}.", userId);
-        return null;
+        log.error("User service is unavailable. Cannot get user by id {}.", userId);
+        throw new RuntimeException("User service is unavailable");
     }
 
     @Override
     public Boolean userExists(Long userId) {
-        log.warn("User service is unavailable. Returning false for user existence check.");
-        return false;
+        log.error("User service is unavailable. Cannot check user existence.");
+        throw new RuntimeException("User service is unavailable");
     }
 }

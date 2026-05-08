@@ -9,10 +9,8 @@ import lombok.Data;
 @Builder
 public class LatLonDto {
     @NotNull
-    @Positive
     private double lat;
 
     @NotNull
-    @Positive
     private double lon;
 }

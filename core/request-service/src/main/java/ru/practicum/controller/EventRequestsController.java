@@ -35,4 +35,6 @@ public class EventRequestsController {
         log.info("Update request status for user {} event {}", userId, eventId);
         return requestService.updateRequestStatus(userId, eventId, req);
     }
+
+
 }

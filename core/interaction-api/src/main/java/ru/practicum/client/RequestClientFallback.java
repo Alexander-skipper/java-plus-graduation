@@ -15,7 +15,7 @@ public class RequestClientFallback implements RequestClient {
 
     @Override
     public ParticipationRequestDto createRequest(Long userId, Long eventId) {
-        log.warn("Request service is unavailable. Cannot create request.");
+        log.error("Request service is unavailable. Cannot create request.");
         throw new RuntimeException("Request service is unavailable");
     }
 
@@ -27,7 +27,7 @@ public class RequestClientFallback implements RequestClient {
 
     @Override
     public ParticipationRequestDto cancelRequest(Long userId, Long requestId) {
-        log.warn("Request service is unavailable. Cannot cancel request.");
+        log.error("Request service is unavailable. Cannot cancel request.");
         throw new RuntimeException("Request service is unavailable");
     }
 
@@ -39,11 +39,8 @@ public class RequestClientFallback implements RequestClient {
 
     @Override
     public EventRequestStatusUpdateResult updateRequestStatus(Long userId, Long eventId, EventRequestStatusUpdateRequest request) {
-        log.warn("Request service is unavailable. Returning empty result.");
-        return EventRequestStatusUpdateResult.builder()
-                .confirmedRequests(Collections.emptyList())
-                .rejectedRequests(Collections.emptyList())
-                .build();
+        log.error("Request service is unavailable. Cannot update request status.");
+        throw new RuntimeException("Request service is unavailable");
     }
 
     @Override
