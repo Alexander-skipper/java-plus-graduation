@@ -108,7 +108,6 @@
             <classifier>jakarta</classifier>
             <version>${querydsl.version}</version>
         </dependency>
-
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>

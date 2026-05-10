@@ -11,25 +11,36 @@ spring:
           predicates:
             - Path=/actuator/**
 
-        - id: location_service_internal_route
-          uri: lb://location-service
+        # === REQUEST SERVICE (должен быть ПЕРВЫМ, чтобы перехватывать /users/*/requests) ===
+        - id: request_service_private_route
+          uri: lb://request-service
           predicates:
-            - Path=/internal/locations/**
+            - Path=/users/{userId}/requests,
+              /users/{userId}/requests/**,
+              /users/{userId}/events/{eventId}/requests,
+              /users/{userId}/events/{eventId}/requests/**
           filters:
             - name: Retry
               args:
                 retries: 3
-                statuses: INTERNAL_SERVER_ERROR, SERVICE_UNAVAILABLE
+                statuses: INTERNAL_SERVER_ERROR
 
-        - id: location_service_private_route
-          uri: lb://location-service
+        - id: request_service_internal_route
+          uri: lb://request-service
           predicates:
-            - Path=/users/{userId}/locations/**
+            - Path=/internal/requests/**
+
+        - id: request_service_count_route
+          uri: lb://request-service
+          predicates:
+            - Path=/requests/count
           filters:
             - name: Retry
               args:
                 retries: 3
+                statuses: INTERNAL_SERVER_ERROR
 
+        # === EVENT SERVICE ===
         - id: event_service_admin_route
           uri: lb://event-service
           predicates:
@@ -55,29 +66,27 @@ spring:
               /compilations/**,
               /categories/**
 
-        - id: request_service_internal_route
-          uri: lb://request-service
+        # === LOCATION SERVICE ===
+        - id: location_service_internal_route
+          uri: lb://location-service
           predicates:
-            - Path=/internal/requests/**
-
-        - id: request_service_count_route
-          uri: lb://request-service
-          predicates:
-            - Path=/requests/count
+            - Path=/internal/locations/**
           filters:
             - name: Retry
               args:
                 retries: 3
-                statuses: INTERNAL_SERVER_ERROR
+                statuses: INTERNAL_SERVER_ERROR, SERVICE_UNAVAILABLE
 
-        - id: request_service_private_route
-          uri: lb://request-service
+        - id: location_service_private_route
+          uri: lb://location-service
           predicates:
-            - Path=/users/{userId}/events/{eventId}/requests,
-              /users/{userId}/events/{eventId}/requests/**,
-              /users/{userId}/requests,
-              /users/{userId}/requests/**
+            - Path=/users/{userId}/locations/**
+          filters:
+            - name: Retry
+              args:
+                retries: 3
 
+        # === USER SERVICE ===
         - id: user_service_admin_route
           uri: lb://user-service
           predicates:

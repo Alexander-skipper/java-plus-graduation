@@ -27,6 +27,7 @@ import ru.practicum.util.EventStateAction;
 import ru.practicum.stats.client.StatsClient;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -43,26 +44,69 @@ public class EventServiceImpl implements EventService {
     private final RequestClient requestClient;
     private final StatsClient statsClient;
 
+    private static final DateTimeFormatter LOG_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     @Override
     @Transactional
     public EventResponseDto create(Long userId, NewEventRequestDto req) {
+        log.info("=== CREATE EVENT START ===");
+        log.info("create() - userId: {}, request: {}", userId, req);
+        log.info("create() - eventDate: {}, location: lat={}, lon={}",
+                req.getEventDate() != null ? req.getEventDate().format(LOG_FORMATTER) : "null",
+                req.getLocation() != null ? req.getLocation().getLat() : "null",
+                req.getLocation() != null ? req.getLocation().getLon() : "null");
+        log.info("create() - annotation length: {}, description length: {}, title length: {}",
+                req.getAnnotation() != null ? req.getAnnotation().length() : 0,
+                req.getDescription() != null ? req.getDescription().length() : 0,
+                req.getTitle() != null ? req.getTitle().length() : 0);
+
         UserDto user = getUserFromClient(userId);
+        log.info("create() - user found: id={}, name={}", user.getId(), user.getName());
 
         Category category = categoryRepository.findById(req.getCategory())
-                .orElseThrow(() -> new NoSuchElementException("Category with id " + req.getCategory() + " notFound"));
+                .orElseThrow(() -> {
+                    log.error("create() - Category with id {} not found!", req.getCategory());
+                    return new NoSuchElementException("Category with id " + req.getCategory() + " notFound");
+                });
+        log.info("create() - category found: id={}, name={}", category.getId(), category.getName());
 
         Event newEvent = mapper.eventRequestToEvent(req, category, user);
         newEvent.setConfirmedRequests(0);
+        log.info("create() - mapped event before save: title={}, state={}, eventDate={}",
+                newEvent.getTitle(), newEvent.getState(),
+                newEvent.getEventDate() != null ? newEvent.getEventDate().format(LOG_FORMATTER) : "null");
 
         Event savedEvent = eventRepository.save(newEvent);
-        log.info("Создано новое событие {} от пользователя {}", savedEvent, user);
+        log.info("=== CREATE EVENT SUCCESS ===");
+        log.info("create() - SAVED EVENT: id={}, title={}, state={}, eventDate={}, initiatorId={}",
+                savedEvent.getId(), savedEvent.getTitle(), savedEvent.getState(),
+                savedEvent.getEventDate() != null ? savedEvent.getEventDate().format(LOG_FORMATTER) : "null",
+                savedEvent.getInitiatorId());
 
-        return mapper.eventToEventResponseDto(savedEvent, getUserShortDto(userId));
+        EventResponseDto result = mapper.eventToEventResponseDto(savedEvent, getUserShortDto(userId));
+        log.info("create() - result dto: id={}", result.getId());
+        return result;
     }
 
     @Override
     public EventResponseDto getPublicEvent(Long eventId) {
-        Event event = eventRepository.findByIdAndState(eventId, EventState.PUBLISHED)
+        log.info("getPublicEvent() - looking for eventId={} with state PUBLISHED", eventId);
+
+        Optional<Event> foundEvent = eventRepository.findByIdAndState(eventId, EventState.PUBLISHED);
+        if (foundEvent.isEmpty()) {
+            log.warn("getPublicEvent() - Event with id {} and state PUBLISHED NOT FOUND", eventId);
+            // Доп. проверка: существует ли событие в любом статусе
+            boolean exists = eventRepository.existsById(eventId);
+            if (exists) {
+                Optional<Event> anyStateEvent = eventRepository.findById(eventId);
+                log.warn("getPublicEvent() - Event {} exists but with state: {}", eventId,
+                        anyStateEvent.map(Event::getState).orElse(null));
+            } else {
+                log.warn("getPublicEvent() - Event {} does NOT exist in ANY state", eventId);
+            }
+        }
+
+        Event event = foundEvent
                 .orElseThrow(() -> new NoSuchElementException("Event with id " + eventId + " notFound"));
 
         try {
@@ -72,7 +116,7 @@ public class EventServiceImpl implements EventService {
             log.warn("Could not get confirmed requests for event {}: {}", eventId, e.getMessage());
         }
 
-        log.info("Найдено событие {}", event);
+        log.info("getPublicEvent() - found event: id={}, title={}, state={}", event.getId(), event.getTitle(), event.getState());
         Long views = getViews(eventId);
         EventResponseDto res = mapper.eventToEventResponseDto(event, getUserShortDto(event.getInitiatorId()));
         res.setViews(views);
@@ -83,15 +127,17 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public EventResponseDto getUserEvent(Long userId, Long eventId) {
+        log.info("getUserEvent() - userId={}, eventId={}", userId, eventId);
         getUserFromClient(userId);
         Event event = findEvent(eventId);
-
-        log.info("Найдено событие {}", event);
+        log.info("getUserEvent() - found event: id={}, state={}, initiatorId={}",
+                event.getId(), event.getState(), event.getInitiatorId());
         checkPermission(event, userId);
 
         try {
             Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
             event.setConfirmedRequests(confirmedRequests.intValue());
+            log.info("getUserEvent() - confirmedRequests={}", confirmedRequests);
         } catch (Exception e) {
             log.warn("Could not get confirmed requests for event {}: {}", eventId, e.getMessage());
         }
@@ -101,9 +147,17 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public List<ShortEventResponseDto> getUserEvents(Long userId, Pageable pageable) {
+        log.info("getUserEvents() - userId={}, page={}, size={}", userId, pageable.getPageNumber(), pageable.getPageSize());
         getUserFromClient(userId);
 
         List<Event> events = eventRepository.findAllByInitiatorId(userId, pageable);
+        log.info("getUserEvents() - found {} events for user {}", events.size(), userId);
+
+        for (Event event : events) {
+            log.info("getUserEvents() - event: id={}, title={}, state={}, eventDate={}",
+                    event.getId(), event.getTitle(), event.getState(),
+                    event.getEventDate() != null ? event.getEventDate().format(LOG_FORMATTER) : "null");
+        }
 
         if (events.isEmpty()) {
             return Collections.emptyList();
@@ -173,7 +227,7 @@ public class EventServiceImpl implements EventService {
                 criteria.getSort());
 
         Page<Event> events = eventRepository.findAll(predicate, pageable);
-        log.info("Найдены события: {}", events.getTotalElements());
+        log.info("find() - Найдены события: {}", events.getTotalElements());
 
         if (events.isEmpty()) {
             return Collections.emptyList();
@@ -254,8 +308,16 @@ public class EventServiceImpl implements EventService {
             LocalDateTime rangeEnd,
             Pageable pageable) {
 
+        log.info("findAdminEvents() - users={}, states={}, categories={}, rangeStart={}, rangeEnd={}, page={}, size={}",
+                users, states, categories, rangeStart, rangeEnd, pageable.getPageNumber(), pageable.getPageSize());
+
         List<Event> events = eventRepository.findAdminEvents(
                 users, states, categories, rangeStart, rangeEnd, pageable);
+
+        log.info("findAdminEvents() - found {} events", events.size());
+        for (Event event : events) {
+            log.info("findAdminEvents() - event: id={}, title={}, state={}", event.getId(), event.getTitle(), event.getState());
+        }
 
         if (events.isEmpty()) {
             return Collections.emptyList();
@@ -280,16 +342,36 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public boolean existsById(Long eventId) {
-        return eventRepository.existsById(eventId);
+        boolean exists = eventRepository.existsById(eventId);
+        log.info("existsById() - eventId={}, exists={}", eventId, exists);
+        return exists;
     }
 
     @Override
     public EventResponseDto getEventById(Long eventId) {
+        log.info("=== getEventById() START ===");
+        log.info("getEventById() - looking for eventId={}", eventId);
+
+        boolean exists = eventRepository.existsById(eventId);
+        log.info("getEventById() - event exists in DB: {}", exists);
+
+        if (exists) {
+            Optional<Event> optionalEvent = eventRepository.findById(eventId);
+            if (optionalEvent.isPresent()) {
+                Event event = optionalEvent.get();
+                log.info("getEventById() - FOUND event: id={}, title={}, state={}, initiatorId={}, eventDate={}",
+                        event.getId(), event.getTitle(), event.getState(), event.getInitiatorId(),
+                        event.getEventDate() != null ? event.getEventDate().format(LOG_FORMATTER) : "null");
+            }
+        }
+
         Event event = findEvent(eventId);
+        log.info("getEventById() - after findEvent: id={}", event.getId());
 
         try {
             Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
             event.setConfirmedRequests(confirmedRequests.intValue());
+            log.info("getEventById() - confirmedRequests from request-service: {}", confirmedRequests);
         } catch (Exception e) {
             log.warn("Could not get confirmed requests for event {}: {}", eventId, e.getMessage());
         }
@@ -298,6 +380,7 @@ public class EventServiceImpl implements EventService {
         Long views = getViews(eventId);
         dto.setViews(views);
         dto.setConfirmedRequests(event.getConfirmedRequests());
+        log.info("getEventById() - returning dto with id={}, views={}", dto.getId(), views);
         return dto;
     }
 
@@ -396,19 +479,32 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional
     public AdminEventResponseDto updateAdminEvent(Long eventId, UpdateEventAdminRequest req) {
+        log.info("=== UPDATE ADMIN EVENT START ===");
+        log.info("updateAdminEvent() - eventId={}, stateAction={}", eventId, req.getStateAction());
+
         Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NoSuchElementException("Event with id " + eventId + " not found"));
+                .orElseThrow(() -> {
+                    log.error("updateAdminEvent() - Event with id {} NOT FOUND in DB!", eventId);
+                    return new NoSuchElementException("Event with id " + eventId + " not found");
+                });
+
+        log.info("updateAdminEvent() - found event: id={}, title={}, currentState={}, eventDate={}",
+                event.getId(), event.getTitle(), event.getState(),
+                event.getEventDate() != null ? event.getEventDate().format(LOG_FORMATTER) : "null");
 
         Event updatedEvent = updateEventByAdmin(event, req);
-        log.info("Updated eventId: {}", updatedEvent);
+        log.info("updateAdminEvent() - updated event: id={}, newState={}", updatedEvent.getId(), updatedEvent.getState());
 
         return mapper.toAdminEventFullDto(updatedEvent, getUserShortDto(event.getInitiatorId()));
     }
 
     @Transactional
     public Event updateEventByAdmin(Event event, UpdateEventAdminRequest update) {
+        log.info("updateEventByAdmin() - START. Event id={}, currentState={}, requested action={}",
+                event.getId(), event.getState(), update.getStateAction());
 
         if (update.getCategory() != null) {
+            log.info("updateEventByAdmin() - updating category to id={}", update.getCategory());
             Category category = categoryRepository.findById(update.getCategory())
                     .orElseThrow(() -> new NoSuchElementException("Category with id " + update.getCategory() + " doesnt exist "));
             event.setCategory(category);
@@ -418,42 +514,77 @@ public class EventServiceImpl implements EventService {
         EventStateAction updateStateAction = update.getStateAction();
 
         if (updateStateAction == EventStateAction.PUBLISH_EVENT) {
+            log.info("updateEventByAdmin() - Attempting to PUBLISH event {}", event.getId());
+
             if (state != EventState.PENDING) {
+                log.error("updateEventByAdmin() - Cannot publish: event state is {}, expected PENDING", state);
                 throw new ConflictException("Only events with waiting status could be published");
             }
-            if (event.getEventDate().minusHours(1L).isBefore(LocalDateTime.now())) {
+
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime oneHourBefore = event.getEventDate().minusHours(1L);
+            boolean canPublish = oneHourBefore.isAfter(now);
+            log.info("updateEventByAdmin() - eventDate={}, now={}, oneHourBefore={}, canPublish={}",
+                    event.getEventDate().format(LOG_FORMATTER),
+                    now.format(LOG_FORMATTER),
+                    oneHourBefore.format(LOG_FORMATTER),
+                    canPublish);
+
+            if (!canPublish) {
+                log.error("updateEventByAdmin() - Cannot publish: event date is too close! EventDate={}, now={}",
+                        event.getEventDate().format(LOG_FORMATTER), now.format(LOG_FORMATTER));
                 throw new ConflictException("Event could be changed only one hour before now");
             }
+
             event.setState(EventState.PUBLISHED);
             event.setPublishedOn(LocalDateTime.now());
+            log.info("updateEventByAdmin() - Event {} successfully PUBLISHED at {}",
+                    event.getId(), event.getPublishedOn().format(LOG_FORMATTER));
 
         } else if (updateStateAction == EventStateAction.REJECT_EVENT) {
+            log.info("updateEventByAdmin() - Attempting to REJECT event {}", event.getId());
             if (state == EventState.PUBLISHED) {
+                log.error("updateEventByAdmin() - Cannot reject: event is already PUBLISHED");
                 throw new ConflictException("Published eventId could not be rejected");
             }
             event.setState(EventState.CANCELED);
+            log.info("updateEventByAdmin() - Event {} REJECTED (state=CANCELED)", event.getId());
+        } else {
+            log.info("updateEventByAdmin() - No state action requested (stateAction={})", updateStateAction);
         }
 
         if (update.getTitle() != null) {
+            log.info("updateEventByAdmin() - updating title from '{}' to '{}'", event.getTitle(), update.getTitle());
             event.setTitle(update.getTitle());
         }
 
         if (update.getAnnotation() != null) {
+            log.info("updateEventByAdmin() - updating annotation (length from {} to {})",
+                    event.getAnnotation() != null ? event.getAnnotation().length() : 0,
+                    update.getAnnotation().length());
             event.setAnnotation(update.getAnnotation());
         }
 
         if (update.getDescription() != null) {
+            log.info("updateEventByAdmin() - updating description (length from {} to {})",
+                    event.getDescription() != null ? event.getDescription().length() : 0,
+                    update.getDescription().length());
             event.setDescription(update.getDescription());
         }
 
         if (update.getEventDate() != null) {
+            log.info("updateEventByAdmin() - updating eventDate from {} to {}",
+                    event.getEventDate().format(LOG_FORMATTER),
+                    update.getEventDate().format(LOG_FORMATTER));
             if (update.getEventDate().isBefore(LocalDateTime.now())) {
+                log.error("updateEventByAdmin() - event date cannot be in the past: {}", update.getEventDate().format(LOG_FORMATTER));
                 throw new ConflictException("Event date couldnt be in the past");
             }
             event.setEventDate(update.getEventDate());
         }
 
         if (update.getParticipantLimit() != null) {
+            log.info("updateEventByAdmin() - updating participantLimit from {} to {}", event.getParticipantLimit(), update.getParticipantLimit());
             if (update.getParticipantLimit() < 0) {
                 throw new IllegalArgumentException("Participant limit cannot be negative");
             }
@@ -461,30 +592,38 @@ public class EventServiceImpl implements EventService {
         }
 
         if (update.getLocation() != null) {
+            log.info("updateEventByAdmin() - updating location from (lat={}, lon={}) to (lat={}, lon={})",
+                    event.getLat(), event.getLon(), update.getLocation().getLat(), update.getLocation().getLon());
             event.setLat(update.getLocation().getLat());
             event.setLon(update.getLocation().getLon());
         }
 
         if (update.getPaid() != null) {
+            log.info("updateEventByAdmin() - updating paid from {} to {}", event.getPaid(), update.getPaid());
             event.setPaid(update.getPaid());
         }
 
         if (update.getRequestModeration() != null) {
+            log.info("updateEventByAdmin() - updating requestModeration from {} to {}", event.getRequestModeration(), update.getRequestModeration());
             event.setRequestModeration(update.getRequestModeration());
         }
 
+        log.info("updateEventByAdmin() - FINISHED. Event id={}, final state={}", event.getId(), event.getState());
         return event;
     }
 
     private UserDto getUserFromClient(Long userId) {
+        log.info("getUserFromClient() - fetching user {}", userId);
         try {
             UserDto user = userClient.getUserById(userId);
             if (user == null) {
+                log.error("getUserFromClient() - user {} is null", userId);
                 throw new NoSuchElementException("User with id " + userId + " not found");
             }
+            log.info("getUserFromClient() - user found: id={}, name={}", user.getId(), user.getName());
             return user;
         } catch (Exception e) {
-            log.error("Error fetching user {}: {}", userId, e.getMessage());
+            log.error("Error fetching user {}: {}", userId, e.getMessage(), e);
             throw new NoSuchElementException("User with id " + userId + " not found");
         }
     }
@@ -498,6 +637,7 @@ public class EventServiceImpl implements EventService {
     }
 
     private Map<Long, UserShortDto> getUsersShortDto(Set<Long> userIds) {
+        log.info("getUsersShortDto() - fetching {} users", userIds.size());
         return userIds.stream()
                 .collect(Collectors.toMap(
                         id -> id,
@@ -506,6 +646,7 @@ public class EventServiceImpl implements EventService {
     }
 
     private Map<Long, Long> getViewsForEvents(List<Long> eventIds) {
+        log.info("getViewsForEvents() - fetching views for {} events", eventIds.size());
         try {
             LocalDateTime end = LocalDateTime.now();
             List<String> uris = eventIds.stream()
@@ -520,20 +661,36 @@ public class EventServiceImpl implements EventService {
                             (a, b) -> a + b
                     ));
         } catch (Exception e) {
-            log.error("Error fetching views for events: {}", e.getMessage());
+            log.error("Error fetching views for events: {}", e.getMessage(), e);
             return new HashMap<>();
         }
     }
 
     private Event findEvent(Long eventId) {
-        return eventRepository.findById(eventId)
-                .orElseThrow(() -> new NoSuchElementException("Event with id " + eventId + " notFound"));
+        log.info("findEvent() - looking for event by id={}", eventId);
+        Optional<Event> optional = eventRepository.findById(eventId);
+        if (optional.isEmpty()) {
+            log.error("findEvent() - Event with id {} NOT FOUND in database!", eventId);
+            // Проверяем все события в БД для отладки
+            List<Event> allEvents = eventRepository.findAll();
+            log.info("findEvent() - Total events in DB: {}", allEvents.size());
+            for (Event e : allEvents) {
+                log.info("findEvent() - existing event: id={}, title={}", e.getId(), e.getTitle());
+            }
+            throw new NoSuchElementException("Event with id " + eventId + " notFound");
+        }
+        Event event = optional.get();
+        log.info("findEvent() - found event: id={}, title={}, state={}", event.getId(), event.getTitle(), event.getState());
+        return event;
     }
 
     private void checkPermission(Event event, Long userId) {
+        log.info("checkPermission() - event initiatorId={}, requesting userId={}", event.getInitiatorId(), userId);
         if (!event.getInitiatorId().equals(userId)) {
-            throw new ResourceAccessException("Access to eventId " + event + " forbidden");
+            log.error("checkPermission() - ACCESS DENIED! User {} cannot access event of user {}", userId, event.getInitiatorId());
+            throw new ResourceAccessException("Access to eventId " + event.getId() + " forbidden");
         }
+        log.info("checkPermission() - access granted");
     }
 
     private void validateCoordinatesAndRadius(Double lat, Double lon, Double radius) {

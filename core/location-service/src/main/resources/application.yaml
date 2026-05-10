@@ -12,6 +12,7 @@ spring:
       retry:
         useRandomPolicy: true
         max-interval: 6000
+
 eureka:
   client:
     serviceUrl:
