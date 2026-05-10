@@ -286,8 +286,10 @@ public class EventServiceImpl implements EventService {
 
         Event updatingEvent = mapper.updateEventField(event, req, category);
 
-        if (req.getStateAction() == EventStateAction.SEND_TO_REVIEW && updatingEvent.getState() != EventState.CANCELED) {
-            updatingEvent.setState(EventState.PENDING);
+        if (req.getStateAction() == EventStateAction.SEND_TO_REVIEW) {
+            if (updatingEvent.getState() == EventState.CANCELED || updatingEvent.getState() == EventState.PENDING) {
+                updatingEvent.setState(EventState.PENDING);
+            }
         }
 
         if (req.getStateAction() == EventStateAction.CANCEL_REVIEW) {
