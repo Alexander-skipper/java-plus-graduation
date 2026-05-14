@@ -17,12 +17,6 @@ public interface EventClient {
     @GetMapping("/internal/events/{eventId}/exists")
     Boolean eventExists(@PathVariable Long eventId);
 
-    @PatchMapping("/internal/events/{eventId}/increment-requests")
-    void incrementConfirmedRequests(@PathVariable Long eventId);
-
-    @PatchMapping("/internal/events/{eventId}/decrement-requests")
-    void decrementConfirmedRequests(@PathVariable Long eventId);
-
     @GetMapping("/internal/categories/{catId}")
     CategoryDto getCategory(@PathVariable Long catId);
 

@@ -26,6 +26,7 @@ public interface EventRepository extends JpaRepository<Event, Long>, QuerydslPre
                AND (:categories IS NULL OR e.category.id IN :categories)
                AND e.eventDate >= COALESCE(:rangeStart, e.eventDate)
                AND e.eventDate <= COALESCE(:rangeEnd, e.eventDate)
+               ORDER BY e.eventDate DESC
             """)
     List<Event> findAdminEvents(
             @Param("users") List<Long> users,

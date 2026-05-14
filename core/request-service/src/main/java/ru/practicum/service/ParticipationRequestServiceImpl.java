@@ -119,7 +119,6 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
             log.info("createRequest() - Auto-confirming request because requestModeration={}, participantLimit={}",
                     event.getRequestModeration(), event.getParticipantLimit());
             request.setStatus(ParticipationRequestStatus.CONFIRMED);
-            incrementConfirmedRequests(eventId);
         }
 
         log.info("createRequest() - saving request with status={}", request.getStatus());
@@ -174,8 +173,8 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         }
 
         if (request.getStatus() == ParticipationRequestStatus.CONFIRMED) {
-            log.info("cancelRequest() - Request was CONFIRMED, decrementing confirmed requests for event {}", request.getEventId());
-            decrementConfirmedRequests(request.getEventId());
+            log.info("cancelRequest() - Request was CONFIRMED, request for event {}. The event service will" +
+                    " query the actual count when needed.", request.getEventId());
         }
 
         request.setStatus(ParticipationRequestStatus.CANCELED);
@@ -287,10 +286,6 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
                 }
             }
 
-            for (int i = 0; i < numberOfFreeSlots; i++) {
-                incrementConfirmedRequests(eventId);
-            }
-
         } else if (updateRequestStatus.getStatus() == ParticipationRequestStatus.REJECTED) {
             log.info("updateRequestStatus() - REJECTED action: rejecting all {} requests", requests.size());
             requests.forEach(request -> {
@@ -351,27 +346,4 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
         }
     }
 
-    private void incrementConfirmedRequests(Long eventId) {
-        log.info("incrementConfirmedRequests() - calling eventClient.incrementConfirmedRequests({})", eventId);
-        try {
-            eventClient.incrementConfirmedRequests(eventId);
-            log.info("incrementConfirmedRequests() - SUCCESS");
-        } catch (Exception e) {
-            log.error("incrementConfirmedRequests() - Error incrementing confirmed requests for event {}: {}",
-                    eventId, e.getMessage(), e);
-            throw new RuntimeException("Failed to update event confirmed requests", e);
-        }
-    }
-
-    private void decrementConfirmedRequests(Long eventId) {
-        log.info("decrementConfirmedRequests() - calling eventClient.decrementConfirmedRequests({})", eventId);
-        try {
-            eventClient.decrementConfirmedRequests(eventId);
-            log.info("decrementConfirmedRequests() - SUCCESS");
-        } catch (Exception e) {
-            log.error("decrementConfirmedRequests() - Error decrementing confirmed requests for event {}: {}",
-                    eventId, e.getMessage(), e);
-            throw new RuntimeException("Failed to update event confirmed requests", e);
-        }
-    }
 }

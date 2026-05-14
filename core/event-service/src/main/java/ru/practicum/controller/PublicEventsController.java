@@ -5,6 +5,7 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -26,10 +27,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PublicEventsController {
 
-    private static final String EVENT_SERVICE = "event-service";
-
     private final EventService service;
     private final StatsClient statsClient;
+
+    @Value("${stats.service.app-name:event-service}")
+    private String appName;
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
@@ -81,11 +83,12 @@ public class PublicEventsController {
 
 
     private void saveHit(HttpServletRequest request) {
-        EndpointHitDto endpointHitDto = new EndpointHitDto();
-        endpointHitDto.setApp(EVENT_SERVICE);
-        endpointHitDto.setUri(request.getRequestURI());
-        endpointHitDto.setIp(request.getRemoteAddr());
-        endpointHitDto.setTimestamp(LocalDateTime.now());
+        EndpointHitDto endpointHitDto = EndpointHitDto.builder()
+                .app(appName)
+                .uri(request.getRequestURI())
+                .ip(request.getRemoteAddr())
+                .timestamp(LocalDateTime.now())
+                .build();
         statsClient.hit(endpointHitDto);
     }
 }

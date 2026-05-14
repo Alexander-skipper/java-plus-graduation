@@ -9,3 +9,5 @@ CREATE TABLE IF NOT EXISTS participation_requests (
     CONSTRAINT chk_request_status CHECK (status IN ('PENDING', 'CONFIRMED', 'REJECTED', 'CANCELED')),
     CONSTRAINT uq_event_requester UNIQUE (event_id, requester_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_event_ids ON participation_requests(event_id);

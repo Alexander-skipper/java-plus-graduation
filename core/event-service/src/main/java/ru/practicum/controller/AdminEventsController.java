@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -39,9 +38,8 @@ public class AdminEventsController {
             @RequestParam(defaultValue = "10") Integer size) {
         log.info("Search events with params: users={}, states={}, categories={}, rangeStart={}, rangeEnd={}, from={}, size={}",
                 users, states, categories, rangeStart, rangeEnd, from, size);
-        log.info("Got request for Admin: search events");
         return eventService.findAdminEvents(users, states, categories, rangeStart, rangeEnd,
-                PageRequest.of(from / size, size, Sort.by("eventDate").descending()));
+                PageRequest.of(from / size, size));
     }
 
     @PatchMapping("/{eventId}")

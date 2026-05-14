@@ -24,9 +24,7 @@ CREATE TABLE IF NOT EXISTS events (
     created_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     category_id BIGINT REFERENCES categories,
     user_id BIGINT,
-    initiator_name VARCHAR(250),
-    confirmed_requests INTEGER,
-    CONSTRAINT chk_status CHECK (state IN ('PENDING', 'REJECTED', 'PUBLISHED', 'CANCELED'))
+    initiator_name VARCHAR(250)
 );
 
 CREATE TABLE IF NOT EXISTS compilations (

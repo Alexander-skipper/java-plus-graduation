@@ -18,7 +18,6 @@ public interface EventMapper {
     @Mapping(target = "createdOn", expression = "java(java.time.LocalDateTime.now())")
     @Mapping(target = "category", source = "category")
     @Mapping(target = "initiatorId", source = "user.id")
-    @Mapping(target = "confirmedRequests", constant = "0")
     Event eventRequestToEvent(NewEventRequestDto newEventRequest, Category category, UserDto user);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -30,6 +29,7 @@ public interface EventMapper {
     @Mapping(target = "location.lon", source = "event.lon")
     @Mapping(target = "initiator", source = "userShort")
     @Mapping(target = "views", ignore = true)
+    @Mapping(target = "confirmedRequests", ignore = true)
     ShortEventResponseDto eventToShortEventResponseDto(Event event, UserShortDto userShort);
 
     @Mapping(target = "id", source = "event.id")
@@ -37,6 +37,7 @@ public interface EventMapper {
     @Mapping(target = "location.lon", source = "event.lon")
     @Mapping(target = "initiator", source = "userShort")
     @Mapping(target = "views", ignore = true)
+    @Mapping(target = "confirmedRequests", ignore = true)
     EventResponseDto eventToEventResponseDto(Event event, UserShortDto userShort);
 
     @Mapping(target = "id", source = "event.id")
@@ -44,5 +45,6 @@ public interface EventMapper {
     @Mapping(target = "location.lat", source = "event.lat")
     @Mapping(target = "location.lon", source = "event.lon")
     @Mapping(target = "views", ignore = true)
+    @Mapping(target = "confirmedRequests", ignore = true)
     AdminEventResponseDto toAdminEventFullDto(Event event, UserShortDto userShort);
 }

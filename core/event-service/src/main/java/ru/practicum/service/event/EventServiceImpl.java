@@ -51,40 +51,21 @@ public class EventServiceImpl implements EventService {
     public EventResponseDto create(Long userId, NewEventRequestDto req) {
         log.info("=== CREATE EVENT START ===");
         log.info("create() - userId: {}, request: {}", userId, req);
-        log.info("create() - eventDate: {}, location: lat={}, lon={}",
-                req.getEventDate() != null ? req.getEventDate().format(LOG_FORMATTER) : "null",
-                req.getLocation() != null ? req.getLocation().getLat() : "null",
-                req.getLocation() != null ? req.getLocation().getLon() : "null");
-        log.info("create() - annotation length: {}, description length: {}, title length: {}",
-                req.getAnnotation() != null ? req.getAnnotation().length() : 0,
-                req.getDescription() != null ? req.getDescription().length() : 0,
-                req.getTitle() != null ? req.getTitle().length() : 0);
 
         UserDto user = getUserFromClient(userId);
-        log.info("create() - user found: id={}, name={}", user.getId(), user.getName());
-
         Category category = categoryRepository.findById(req.getCategory())
                 .orElseThrow(() -> {
                     log.error("create() - Category with id {} not found!", req.getCategory());
                     return new NoSuchElementException("Category with id " + req.getCategory() + " notFound");
                 });
-        log.info("create() - category found: id={}, name={}", category.getId(), category.getName());
 
         Event newEvent = mapper.eventRequestToEvent(req, category, user);
-        newEvent.setConfirmedRequests(0);
-        log.info("create() - mapped event before save: title={}, state={}, eventDate={}",
-                newEvent.getTitle(), newEvent.getState(),
-                newEvent.getEventDate() != null ? newEvent.getEventDate().format(LOG_FORMATTER) : "null");
-
         Event savedEvent = eventRepository.save(newEvent);
-        log.info("=== CREATE EVENT SUCCESS ===");
-        log.info("create() - SAVED EVENT: id={}, title={}, state={}, eventDate={}, initiatorId={}",
-                savedEvent.getId(), savedEvent.getTitle(), savedEvent.getState(),
-                savedEvent.getEventDate() != null ? savedEvent.getEventDate().format(LOG_FORMATTER) : "null",
-                savedEvent.getInitiatorId());
 
         EventResponseDto result = mapper.eventToEventResponseDto(savedEvent, getUserShortDto(userId));
-        log.info("create() - result dto: id={}", result.getId());
+
+        Long confirmedRequests = requestClient.countByEventIdAndStatus(savedEvent.getId(), "CONFIRMED");
+        result.setConfirmedRequests(confirmedRequests.intValue());
         return result;
     }
 
@@ -109,18 +90,12 @@ public class EventServiceImpl implements EventService {
         Event event = foundEvent
                 .orElseThrow(() -> new NoSuchElementException("Event with id " + eventId + " notFound"));
 
-        try {
-            Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
-            event.setConfirmedRequests(confirmedRequests.intValue());
-        } catch (Exception e) {
-            log.warn("Could not get confirmed requests for event {}: {}", eventId, e.getMessage());
-        }
-
-        log.info("getPublicEvent() - found event: id={}, title={}, state={}", event.getId(), event.getTitle(), event.getState());
+        Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
         Long views = getViews(eventId);
+
         EventResponseDto res = mapper.eventToEventResponseDto(event, getUserShortDto(event.getInitiatorId()));
         res.setViews(views);
-        res.setConfirmedRequests(event.getConfirmedRequests());
+        res.setConfirmedRequests(confirmedRequests.intValue());
 
         return res;
     }
@@ -134,15 +109,11 @@ public class EventServiceImpl implements EventService {
                 event.getId(), event.getState(), event.getInitiatorId());
         checkPermission(event, userId);
 
-        try {
-            Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
-            event.setConfirmedRequests(confirmedRequests.intValue());
-            log.info("getUserEvent() - confirmedRequests={}", confirmedRequests);
-        } catch (Exception e) {
-            log.warn("Could not get confirmed requests for event {}: {}", eventId, e.getMessage());
-        }
+        Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
 
-        return mapper.eventToEventResponseDto(event, getUserShortDto(userId));
+        EventResponseDto res = mapper.eventToEventResponseDto(event, getUserShortDto(userId));
+        res.setConfirmedRequests(confirmedRequests.intValue());
+        return res;
     }
 
     @Override
@@ -163,21 +134,15 @@ public class EventServiceImpl implements EventService {
             return Collections.emptyList();
         }
 
-        Map<Long, Integer> confirmedRequestsMap = new HashMap<>();
-        for (Event event : events) {
-            try {
-                Long count = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
-                confirmedRequestsMap.put(event.getId(), count.intValue());
-                event.setConfirmedRequests(count.intValue());
-            } catch (Exception e) {
-                log.warn("Could not get confirmed requests for event {}: {}", event.getId(), e.getMessage());
-            }
-        }
+        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
+        Map<Long, Integer> confirmedRequestsMap = getConfirmedRequestsCounts(eventIds);
+        Map<Long, Long> viewsMap = getViewsForEvents(eventIds);
 
         return events.stream()
                 .map((event) -> {
                     ShortEventResponseDto dto = mapper.eventToShortEventResponseDto(event, getUserShortDto(userId));
                     dto.setConfirmedRequests(confirmedRequestsMap.getOrDefault(event.getId(), 0));
+                    dto.setViews(viewsMap.getOrDefault(event.getId(), 0L));
                     return dto;
                 })
                 .toList();
@@ -216,8 +181,7 @@ public class EventServiceImpl implements EventService {
         }
 
         if (criteria.isOnlyAvailable()) {
-            predicate.and(QEvent.event.participantLimit.eq(0)
-                    .or(QEvent.event.participantLimit.gt(QEvent.event.confirmedRequests)));
+            predicate.and(QEvent.event.participantLimit.eq(0));
         }
 
         predicate.and(QEvent.event.state.eq(EventState.PUBLISHED));
@@ -237,19 +201,12 @@ public class EventServiceImpl implements EventService {
                 .map(Event::getInitiatorId)
                 .collect(Collectors.toSet());
 
-        Map<Long, UserShortDto> usersMap = getUsersShortDto(initiatorIds);
-        Map<Long, Long> viewsMap = getViewsForEvents(events.stream().map(Event::getId).collect(Collectors.toList()));
+        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
 
-        Map<Long, Integer> confirmedRequestsMap = new HashMap<>();
-        for (Event event : events) {
-            try {
-                Long count = requestClient.countByEventIdAndStatus(event.getId(), "CONFIRMED");
-                confirmedRequestsMap.put(event.getId(), count.intValue());
-                event.setConfirmedRequests(count.intValue());
-            } catch (Exception e) {
-                log.warn("Could not get confirmed requests for event {}: {}", event.getId(), e.getMessage());
-            }
-        }
+        Map<Long, UserShortDto> usersMap = getUsersShortDto(initiatorIds);
+        Map<Long, Long> viewsMap = getViewsForEvents(eventIds);
+
+        Map<Long, Integer> confirmedRequestsMap = getConfirmedRequestsCounts(eventIds);
 
         return events.stream()
                 .map(event -> {
@@ -296,9 +253,11 @@ public class EventServiceImpl implements EventService {
             updatingEvent.setState(EventState.CANCELED);
         }
 
-        log.info("Событие {} обновлено данными из запроса {}", updatingEvent, req);
+        EventResponseDto result = mapper.eventToEventResponseDto(updatingEvent, getUserShortDto(userId));
+        Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
+        result.setConfirmedRequests(confirmedRequests.intValue());
 
-        return mapper.eventToEventResponseDto(updatingEvent, getUserShortDto(userId));
+        return result;
     }
 
     @Override
@@ -310,16 +269,11 @@ public class EventServiceImpl implements EventService {
             LocalDateTime rangeEnd,
             Pageable pageable) {
 
-        log.info("findAdminEvents() - users={}, states={}, categories={}, rangeStart={}, rangeEnd={}, page={}, size={}",
-                users, states, categories, rangeStart, rangeEnd, pageable.getPageNumber(), pageable.getPageSize());
+        log.info("findAdminEvents() - users={}, states={}, categories={},",
+                users, states, categories);
 
         List<Event> events = eventRepository.findAdminEvents(
                 users, states, categories, rangeStart, rangeEnd, pageable);
-
-        log.info("findAdminEvents() - found {} events", events.size());
-        for (Event event : events) {
-            log.info("findAdminEvents() - event: id={}, title={}, state={}", event.getId(), event.getTitle(), event.getState());
-        }
 
         if (events.isEmpty()) {
             return Collections.emptyList();
@@ -329,61 +283,70 @@ public class EventServiceImpl implements EventService {
                 .map(Event::getInitiatorId)
                 .collect(Collectors.toSet());
 
+        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
+
         Map<Long, UserShortDto> usersMap = getUsersShortDto(initiatorIds);
-        Map<Long, Long> viewsMap = getViewsForEvents(events.stream().map(Event::getId).collect(Collectors.toList()));
+        Map<Long, Long> viewsMap = getViewsForEvents(eventIds);
+        Map<Long, Integer> confirmedRequestsMap = getConfirmedRequestsCounts(eventIds);
 
         return events.stream()
                 .map(event -> {
                     UserShortDto userShort = usersMap.get(event.getInitiatorId());
                     AdminEventResponseDto dto = mapper.toAdminEventFullDto(event, userShort);
                     dto.setViews(viewsMap.getOrDefault(event.getId(), 0L));
+                    dto.setConfirmedRequests(confirmedRequestsMap.getOrDefault(event.getId(), 0));
                     return dto;
                 })
                 .collect(Collectors.toList());
     }
 
     @Override
-    public boolean existsById(Long eventId) {
-        boolean exists = eventRepository.existsById(eventId);
-        log.info("existsById() - eventId={}, exists={}", eventId, exists);
-        return exists;
-    }
-
-    @Override
     public EventResponseDto getEventById(Long eventId) {
         log.info("=== getEventById() START ===");
         log.info("getEventById() - looking for eventId={}", eventId);
-
-        boolean exists = eventRepository.existsById(eventId);
-        log.info("getEventById() - event exists in DB: {}", exists);
-
-        if (exists) {
-            Optional<Event> optionalEvent = eventRepository.findById(eventId);
-            if (optionalEvent.isPresent()) {
-                Event event = optionalEvent.get();
-                log.info("getEventById() - FOUND event: id={}, title={}, state={}, initiatorId={}, eventDate={}",
-                        event.getId(), event.getTitle(), event.getState(), event.getInitiatorId(),
-                        event.getEventDate() != null ? event.getEventDate().format(LOG_FORMATTER) : "null");
-            }
-        }
-
         Event event = findEvent(eventId);
-        log.info("getEventById() - after findEvent: id={}", event.getId());
 
-        try {
-            Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
-            event.setConfirmedRequests(confirmedRequests.intValue());
-            log.info("getEventById() - confirmedRequests from request-service: {}", confirmedRequests);
-        } catch (Exception e) {
-            log.warn("Could not get confirmed requests for event {}: {}", eventId, e.getMessage());
-        }
+        Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
+        Long views = getViews(eventId);
 
         EventResponseDto dto = mapper.eventToEventResponseDto(event, getUserShortDto(event.getInitiatorId()));
-        Long views = getViews(eventId);
         dto.setViews(views);
-        dto.setConfirmedRequests(event.getConfirmedRequests());
-        log.info("getEventById() - returning dto with id={}, views={}", dto.getId(), views);
+        dto.setConfirmedRequests(confirmedRequests.intValue());
         return dto;
+    }
+
+    @Override
+    public EventResponseDto getInternalEventById(Long eventId) {
+        log.info("getInternalEventById() - looking for eventId={}", eventId);
+        Event event = findEvent(eventId);
+
+        Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
+
+        EventResponseDto dto = mapper.eventToEventResponseDto(event, getUserShortDto(event.getInitiatorId()));
+        dto.setConfirmedRequests(confirmedRequests.intValue());
+
+        return dto;
+    }
+
+    @Override
+    public boolean existsById(Long eventId) {
+        return eventRepository.existsById(eventId);
+    }
+
+    @Override
+    public Map<Long, Integer> getConfirmedRequestsCounts(List<Long> eventIds) {
+        if (eventIds == null || eventIds.isEmpty()) {
+            return Map.of();
+        }
+
+        try {
+            Map<Long, Long> counts = requestClient.countByEventIdsAndStatus(eventIds, "CONFIRMED");
+            return counts.entrySet().stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().intValue()));
+        } catch (Exception e) {
+            log.error("Error getting confirmed requests counts: {}", e.getMessage());
+            return Map.of();
+        }
     }
 
     @Override
@@ -418,14 +381,18 @@ public class EventServiceImpl implements EventService {
                 .map(Event::getInitiatorId)
                 .collect(Collectors.toSet());
 
+        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
+
         Map<Long, UserShortDto> usersMap = getUsersShortDto(initiatorIds);
-        Map<Long, Long> viewsMap = getViewsForEvents(events.stream().map(Event::getId).collect(Collectors.toList()));
+        Map<Long, Long> viewsMap = getViewsForEvents(eventIds);
+        Map<Long, Integer> confirmedRequestsMap = getConfirmedRequestsCounts(eventIds);
 
         return events.stream()
                 .map(event -> {
                     UserShortDto userShort = usersMap.get(event.getInitiatorId());
                     ShortEventResponseDto dto = mapper.eventToShortEventResponseDto(event, userShort);
                     dto.setViews(viewsMap.getOrDefault(event.getId(), 0L));
+                    dto.setConfirmedRequests(confirmedRequestsMap.getOrDefault(event.getId(), 0));
                     return dto;
                 })
                 .collect(Collectors.toList());
@@ -465,14 +432,18 @@ public class EventServiceImpl implements EventService {
                 .map(Event::getInitiatorId)
                 .collect(Collectors.toSet());
 
+        List<Long> eventIds = allEvents.stream().map(Event::getId).collect(Collectors.toList());
+
         Map<Long, UserShortDto> usersMap = getUsersShortDto(initiatorIds);
-        Map<Long, Long> viewsMap = getViewsForEvents(allEvents.stream().map(Event::getId).collect(Collectors.toList()));
+        Map<Long, Long> viewsMap = getViewsForEvents(eventIds);
+        Map<Long, Integer> confirmedRequestsMap = getConfirmedRequestsCounts(eventIds);
 
         return allEvents.stream()
                 .map(event -> {
                     UserShortDto userShort = usersMap.get(event.getInitiatorId());
                     ShortEventResponseDto dto = mapper.eventToShortEventResponseDto(event, userShort);
                     dto.setViews(viewsMap.getOrDefault(event.getId(), 0L));
+                    dto.setConfirmedRequests(confirmedRequestsMap.getOrDefault(event.getId(), 0));
                     return dto;
                 })
                 .collect(Collectors.toList());
@@ -497,7 +468,11 @@ public class EventServiceImpl implements EventService {
         Event updatedEvent = updateEventByAdmin(event, req);
         log.info("updateAdminEvent() - updated event: id={}, newState={}", updatedEvent.getId(), updatedEvent.getState());
 
-        return mapper.toAdminEventFullDto(updatedEvent, getUserShortDto(event.getInitiatorId()));
+        AdminEventResponseDto dto = mapper.toAdminEventFullDto(updatedEvent, getUserShortDto(event.getInitiatorId()));
+        Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
+        dto.setConfirmedRequests(confirmedRequests.intValue());
+
+        return dto;
     }
 
     @Transactional

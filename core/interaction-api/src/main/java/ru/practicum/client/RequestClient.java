@@ -7,6 +7,7 @@ import ru.practicum.dto.event.EventRequestStatusUpdateResult;
 import ru.practicum.dto.request.ParticipationRequestDto;
 
 import java.util.List;
+import java.util.Map;
 
 @FeignClient(name = "request-service", fallback = RequestClientFallback.class)
 public interface RequestClient {
@@ -34,4 +35,8 @@ public interface RequestClient {
     @GetMapping("/internal/requests/count")
     Long countByEventIdAndStatus(@RequestParam Long eventId,
                                  @RequestParam String status);
+
+    @GetMapping("/internal/requests/count/batch")
+    Map<Long, Long> countByEventIdsAndStatus(@RequestParam List<Long> eventIds,
+                                             @RequestParam String status);
 }

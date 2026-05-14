@@ -6,6 +6,7 @@ import ru.practicum.util.EventState;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public interface EventService {
 
@@ -25,5 +26,7 @@ public interface EventService {
                                                 LocalDateTime rangeEnd, Pageable pageable);
 
     EventResponseDto getEventById(Long eventId);
+    EventResponseDto getInternalEventById(Long eventId);
     boolean existsById(Long eventId);
+    Map<Long, Integer> getConfirmedRequestsCounts(List<Long> eventIds);
 }

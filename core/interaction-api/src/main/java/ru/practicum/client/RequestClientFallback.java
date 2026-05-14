@@ -8,6 +8,7 @@ import ru.practicum.dto.request.ParticipationRequestDto;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @Slf4j
@@ -47,5 +48,11 @@ public class RequestClientFallback implements RequestClient {
     public Long countByEventIdAndStatus(Long eventId, String status) {
         log.warn("Request service is unavailable. Returning 0 for count.");
         return 0L;
+    }
+
+    @Override
+    public Map<Long, Long> countByEventIdsAndStatus(List<Long> eventIds, String status) {
+        log.warn("Request service is unavailable. Returning empty map for batch count.");
+        return Map.of();
     }
 }
