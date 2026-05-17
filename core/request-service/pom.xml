@@ -66,6 +66,11 @@
             <artifactId>interaction-api</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>ru.practicum</groupId>
+            <artifactId>stats-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

@@ -33,5 +33,5 @@ public class ShortEventResponseDto {
 
     private Long id;
 
-    private Long views;
+    private Double rating;
 }

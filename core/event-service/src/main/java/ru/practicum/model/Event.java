@@ -83,6 +83,9 @@ public class Event {
     @JoinColumn(name = "category_id")
     private Category category;
 
+    @Column(name = "rating", columnDefinition = "DOUBLE PRECISION DEFAULT 0.0")
+    private Double rating;
+
     @Override
     public String toString() {
         return "Event{" +
@@ -97,6 +100,7 @@ public class Event {
                 ", lat=" + lat +
                 ", lon=" + lon +
                 ", state=" + state +
+                ", rating=" + rating +
                 "}";
     }
 }

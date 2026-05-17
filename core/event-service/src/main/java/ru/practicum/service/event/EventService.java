@@ -29,4 +29,8 @@ public interface EventService {
     EventResponseDto getInternalEventById(Long eventId);
     boolean existsById(Long eventId);
     Map<Long, Integer> getConfirmedRequestsCounts(List<Long> eventIds);
+
+    List<ShortEventResponseDto> getRecommendationsForUser(Long userId, int maxResults);
+    void likeEvent(Long userId, Long eventId);
+    void updateEventRating(Long eventId);
 }
