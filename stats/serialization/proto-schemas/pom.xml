@@ -14,6 +14,7 @@
     <properties>
         <protobuf.version>3.25.5</protobuf.version>
         <grpc.version>1.63.0</grpc.version>
+        <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
     </properties>
 
     <dependencies>
@@ -45,15 +46,22 @@
     </dependencies>
 
     <build>
+        <extensions>
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>${os-maven-plugin.version}</version>
+            </extension>
+        </extensions>
         <plugins>
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
                 <version>0.6.1</version>
                 <configuration>
-                    <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:windows-x86_64</protocArtifact>
+                    <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
                     <pluginId>grpc-java</pluginId>
-                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:windows-x86_64</pluginArtifact>
+                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
                     <protoSourceRoot>${project.basedir}/src/main/protobuf</protoSourceRoot>
                     <outputDirectory>${project.build.directory}/generated-sources/protobuf</outputDirectory>
                     <clearOutputDirectory>false</clearOutputDirectory>
