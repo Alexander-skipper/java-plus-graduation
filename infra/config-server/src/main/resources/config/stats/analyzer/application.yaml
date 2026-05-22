@@ -1,6 +1,10 @@
 server:
   port: 0
 
+grpc:
+  server:
+    port: 0
+
 spring:
   kafka:
     bootstrap-servers: localhost:9092
@@ -27,10 +31,6 @@ kafka:
   topics:
     user-actions: stats.user-actions.v1
     events-similarity: stats.events-similarity.v1
-
-grpc:
-  server:
-    port: 0
 
 eureka:
   instance:
