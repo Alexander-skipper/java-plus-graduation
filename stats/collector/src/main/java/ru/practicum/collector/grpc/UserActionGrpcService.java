@@ -1,6 +1,7 @@
 package ru.practicum.collector.grpc;
 
 import com.google.protobuf.Empty;
+import com.google.protobuf.Timestamp;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,11 +27,17 @@ public class UserActionGrpcService extends UserActionControllerGrpc.UserActionCo
         log.info("Received user action: userId={}, eventId={}, actionType={}",
                 request.getUserId(), request.getEventId(), request.getActionType());
 
+        Timestamp protoTimestamp = request.getTimestamp();
+        Instant actionTimestamp = Instant.ofEpochSecond(
+                protoTimestamp.getSeconds(),
+                protoTimestamp.getNanos()
+        );
+
         UserActionAvro avroMessage = UserActionAvro.newBuilder()
                 .setUserId(request.getUserId())
                 .setEventId(request.getEventId())
                 .setActionType(toAvroActionType(request.getActionType()))
-                .setTimestamp(Instant.now())
+                .setTimestamp(actionTimestamp)
                 .build();
 
         producer.send(avroMessage);

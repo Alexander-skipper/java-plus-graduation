@@ -3,6 +3,8 @@ package ru.practicum.analyzer.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.analyzer.model.EventSimilarityEntity;
@@ -14,6 +16,7 @@ import ru.practicum.ewm.stats.avro.EventSimilarityAvro;
 import ru.practicum.ewm.stats.avro.UserActionAvro;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 
 @Service
@@ -32,38 +35,45 @@ public class KafkaConsumerService {
             groupId = "analyzer-group",
             containerFactory = "userActionKafkaListenerContainerFactory")
     @Transactional
-    public void consumeUserAction(UserActionAvro userAction) {
+    public void consumeUserAction(@Header(KafkaHeaders.RECEIVED_KEY) Long key, UserActionAvro userAction) {
         log.info("Consuming user action: userId={}, eventId={}, actionType={}",
                 userAction.getUserId(), userAction.getEventId(), userAction.getActionType());
+
+        if (key != null && !key.equals(userAction.getUserId())) {
+            log.warn("Key mismatch! Key: {}, UserId: {}", key, userAction.getUserId());
+        }
 
         double weight = getWeight(userAction.getActionType());
 
         Optional<UserActionEntity> existingOpt = userActionRepository
                 .findByUserIdAndEventId(userAction.getUserId(), userAction.getEventId());
 
+        LocalDateTime actionTime = LocalDateTime.ofInstant(userAction.getTimestamp(), ZoneId.systemDefault());
+
         if (existingOpt.isPresent()) {
             UserActionEntity existing = existingOpt.get();
-            if (weight > existing.getWeight()) {
-                existing.setWeight(weight);
-                existing.setLastActionTime(LocalDateTime.now());
-                existing.setActionType(userAction.getActionType().toString());
-                userActionRepository.save(existing);
-                log.info("Updated user action: userId={}, eventId={}, new weight={}",
-                        userAction.getUserId(), userAction.getEventId(), weight);
-            } else {
-                log.debug("Skipped update: existing weight {} >= new weight {}", existing.getWeight(), weight);
-            }
+            existing.setLastActionTime(actionTime);
+            double newWeight = Math.max(existing.getWeight(), weight);
+
+            existing.setWeight(newWeight);
+            existing.setActionType(userAction.getActionType().toString());
+
+            log.info("Updated user action: userId={}, eventId={}, addedWeight={}, oldWeight={}, newWeight={}, newTime={}",
+                    userAction.getUserId(), userAction.getEventId(), weight,
+                    newWeight - weight, newWeight, actionTime);
+
+            userActionRepository.save(existing);
         } else {
             UserActionEntity entity = UserActionEntity.builder()
                     .userId(userAction.getUserId())
                     .eventId(userAction.getEventId())
                     .weight(weight)
-                    .lastActionTime(LocalDateTime.now())
+                    .lastActionTime(actionTime)
                     .actionType(userAction.getActionType().toString())
                     .build();
             userActionRepository.save(entity);
-            log.info("Saved new user action: userId={}, eventId={}, weight={}",
-                    userAction.getUserId(), userAction.getEventId(), weight);
+            log.info("Saved new user action: userId={}, eventId={}, weight={}, time={}",
+                    userAction.getUserId(), userAction.getEventId(), weight, actionTime);
         }
     }
 

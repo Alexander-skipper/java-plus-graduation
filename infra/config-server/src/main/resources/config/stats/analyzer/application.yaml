@@ -12,8 +12,8 @@ spring:
       group-id: analyzer-group
       auto-offset-reset: earliest
       enable-auto-commit: false
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+      key-deserializer: org.apache.kafka.common.serialization.LongDeserializer
+      value-deserializer: kafka.serializer.UserActionDeserializer
   datasource:
     driverClassName: org.postgresql.Driver
     url: jdbc:postgresql://localhost:6546/analyzer

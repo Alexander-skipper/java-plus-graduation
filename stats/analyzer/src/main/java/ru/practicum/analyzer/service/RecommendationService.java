@@ -102,12 +102,19 @@ public class RecommendationService {
         }
 
         List<UserActionEntity> allActions = userActionRepository.findAll();
-        Map<Long, Double> eventWeightSums = allActions.stream()
-                .filter(action -> eventIds.contains(action.getEventId()))
-                .collect(Collectors.groupingBy(
-                        UserActionEntity::getEventId,
-                        Collectors.summingDouble(UserActionEntity::getWeight)
-                ));
+
+        Map<Long, Double> eventWeightSums = new HashMap<>();
+
+        for (UserActionEntity action : allActions) {
+            if (eventIds.contains(action.getEventId())) {
+                eventWeightSums.merge(action.getEventId(), action.getWeight(), Double::sum);
+            }
+        }
+
+        for (Long eventId : eventIds) {
+            eventWeightSums.putIfAbsent(eventId, 0.0);
+        }
+
 
         return eventWeightSums.entrySet().stream()
                 .map(entry -> new RecommendedEvent(entry.getKey(), entry.getValue()))

@@ -9,8 +9,8 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092
     producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+      key-serializer: org.apache.kafka.common.serialization.LongSerializer
+      value-serializer: kafka.serializer.GeneralAvroSerializer
       acks: all
       retries: 3
 

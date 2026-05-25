@@ -7,6 +7,7 @@ import ru.practicum.aggregator.model.WeightMatrix;
 import ru.practicum.ewm.stats.avro.ActionTypeAvro;
 
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -51,14 +52,21 @@ public class SimilarityCalculator {
     }
 
     private void updateMinWeightSumsForUser(Long eventA, Long userId, double oldWeightA, double newWeightA) {
-        for (Map.Entry<Long, Map<Long, Double>> eventEntry : weightMatrix.getEventUserWeights().entrySet()) {
-            Long eventB = eventEntry.getKey();
+        Map<Long, Double> userEvents = weightMatrix.getEventUserWeights().entrySet().stream()
+                .filter(entry -> entry.getValue().containsKey(userId))
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().get(userId)
+                ));
+
+        for (Map.Entry<Long, Double> userEvent : userEvents.entrySet()) {
+            Long eventB = userEvent.getKey();
 
             if (eventA.equals(eventB)) {
                 continue;
             }
 
-            Double weightB = eventEntry.getValue().get(userId);
+            Double weightB = userEvent.getValue();
             if (weightB == null || weightB == 0.0) {
                 continue;
             }
@@ -69,7 +77,8 @@ public class SimilarityCalculator {
 
             if (deltaMin != 0.0) {
                 weightMatrix.updateMinWeightSum(eventA, eventB, deltaMin);
-                log.debug("Updated S_min for pair ({},{}): delta={}", eventA, eventB, deltaMin);
+                log.debug("Updated S_min for pair ({},{}): delta={}, new S_min={}",
+                        eventA, eventB, deltaMin, weightMatrix.getMinWeightSum(eventA, eventB));
             }
         }
     }

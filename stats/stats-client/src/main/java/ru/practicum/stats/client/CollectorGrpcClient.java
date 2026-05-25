@@ -20,20 +20,20 @@ public class CollectorGrpcClient {
     private UserActionControllerGrpc.UserActionControllerBlockingStub collectorStub;
 
     public void sendView(Long userId, Long eventId) {
-        sendAction(userId, eventId, ActionTypeProto.ACTION_VIEW);
+        sendAction(userId, eventId, ActionTypeProto.ACTION_VIEW, Instant.now());
     }
 
     public void sendRegister(Long userId, Long eventId) {
-        sendAction(userId, eventId, ActionTypeProto.ACTION_REGISTER);
+        sendAction(userId, eventId, ActionTypeProto.ACTION_REGISTER, Instant.now());
     }
 
     public void sendLike(Long userId, Long eventId) {
-        sendAction(userId, eventId, ActionTypeProto.ACTION_LIKE);
+        sendAction(userId, eventId, ActionTypeProto.ACTION_LIKE, Instant.now());
     }
 
-    private void sendAction(Long userId, Long eventId, ActionTypeProto actionType) {
-        log.info("Sending action via gRPC to Collector: userId={}, eventId={}, actionType={}",
-                userId, eventId, actionType);
+    private void sendAction(Long userId, Long eventId, ActionTypeProto actionType, Instant timestamp) {
+        log.info("Sending action via gRPC to Collector: userId={}, eventId={}, actionType={}, timestamp={}\",",
+                userId, eventId, actionType, timestamp);
 
         try {
             UserActionProto request = UserActionProto.newBuilder()
@@ -41,8 +41,8 @@ public class CollectorGrpcClient {
                     .setEventId(eventId)
                     .setActionType(actionType)
                     .setTimestamp(Timestamp.newBuilder()
-                            .setSeconds(Instant.now().getEpochSecond())
-                            .setNanos(Instant.now().getNano()))
+                            .setSeconds(timestamp.getEpochSecond())
+                            .setNanos(timestamp.getNano()))
                     .build();
 
             Empty response = collectorStub.collectUserAction(request);

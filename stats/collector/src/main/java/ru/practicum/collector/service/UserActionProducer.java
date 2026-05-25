@@ -12,7 +12,7 @@ import ru.practicum.ewm.stats.avro.UserActionAvro;
 @RequiredArgsConstructor
 public class UserActionProducer {
 
-    private final KafkaTemplate<String, UserActionAvro> kafkaTemplate;
+    private final KafkaTemplate<Long, UserActionAvro> kafkaTemplate;
 
     @Value("${kafka.topics.user-actions:stats.user-actions.v1}")
     private String topic;
@@ -20,6 +20,6 @@ public class UserActionProducer {
     public void send(UserActionAvro message) {
         log.info("Sending message to Kafka topic {}: userId={}, eventId={}",
                 topic, message.getUserId(), message.getEventId());
-        kafkaTemplate.send(topic, String.valueOf(message.getUserId()), message);
+        kafkaTemplate.send(topic, message.getUserId(), message);
     }
 }

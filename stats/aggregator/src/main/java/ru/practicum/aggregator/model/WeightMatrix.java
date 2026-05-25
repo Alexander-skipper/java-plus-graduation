@@ -62,10 +62,21 @@ public class WeightMatrix {
         Double sA = getEventWeightSum(eventA);
         Double sB = getEventWeightSum(eventB);
 
+        if (sMin == 0.0) {
+            return 0.0;
+        }
+
         if (sA == 0.0 || sB == 0.0) {
             return 0.0;
         }
 
-        return sMin / (Math.sqrt(sA) * Math.sqrt(sB));
+        double denominator = Math.sqrt(sA) * Math.sqrt(sB);
+        if (denominator == 0.0) {
+            return 0.0;
+        }
+
+        double similarity = sMin / denominator;
+
+        return Math.round(similarity * 100.0) / 100.0;
     }
 }
