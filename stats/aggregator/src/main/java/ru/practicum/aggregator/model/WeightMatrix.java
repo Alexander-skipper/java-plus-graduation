@@ -12,7 +12,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Getter
 public class WeightMatrix {
 
-    @Getter
     private final Map<Long, Map<Long, Double>> eventUserWeights = new ConcurrentHashMap<>();
     private final Map<Long, Double> eventWeightSums = new ConcurrentHashMap<>();
     private final Map<Long, Map<Long, Double>> minWeightSums = new ConcurrentHashMap<>();
@@ -62,11 +61,7 @@ public class WeightMatrix {
         Double sA = getEventWeightSum(eventA);
         Double sB = getEventWeightSum(eventB);
 
-        if (sMin == 0.0) {
-            return 0.0;
-        }
-
-        if (sA == 0.0 || sB == 0.0) {
+        if (sMin == 0.0 || sA == 0.0 || sB == 0.0) {
             return 0.0;
         }
 

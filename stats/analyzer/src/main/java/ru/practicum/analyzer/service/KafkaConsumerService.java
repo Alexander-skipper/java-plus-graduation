@@ -7,6 +7,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.analyzer.config.ActionWeightsConfig;
 import ru.practicum.analyzer.model.EventSimilarityEntity;
 import ru.practicum.analyzer.model.UserActionEntity;
 import ru.practicum.analyzer.repository.EventSimilarityRepository;
@@ -26,10 +27,7 @@ public class KafkaConsumerService {
 
     private final UserActionRepository userActionRepository;
     private final EventSimilarityRepository eventSimilarityRepository;
-
-    private static final double VIEW_WEIGHT = 0.4;
-    private static final double REGISTER_WEIGHT = 0.8;
-    private static final double LIKE_WEIGHT = 1.0;
+    private final ActionWeightsConfig actionWeightsConfig;
 
     @KafkaListener(topics = "${kafka.topics.user-actions:stats.user-actions.v1}",
             groupId = "analyzer-group",
@@ -110,9 +108,9 @@ public class KafkaConsumerService {
 
     private double getWeight(ActionTypeAvro actionType) {
         return switch (actionType) {
-            case VIEW -> VIEW_WEIGHT;
-            case REGISTER -> REGISTER_WEIGHT;
-            case LIKE -> LIKE_WEIGHT;
+            case VIEW -> actionWeightsConfig.getView();
+            case REGISTER -> actionWeightsConfig.getRegister();
+            case LIKE -> actionWeightsConfig.getLike();
         };
     }
 }

@@ -16,7 +16,7 @@ public interface EventService {
     EventResponseDto getUserEvent(Long userId, Long eventId);
 
     List<ShortEventResponseDto> find(EventSearchCriteria criteria);
-    EventResponseDto getPublicEvent(Long eventId);
+    EventResponseDto getPublicEvent(Long eventId, Long userId);
     List<ShortEventResponseDto> findEventsByLocation(Long locationId, Pageable pageable);
     List<ShortEventResponseDto> findEventsNear(Double lat, Double lon, Double radius, Pageable pageable);
 
@@ -25,7 +25,6 @@ public interface EventService {
                                                 List<Long> categories, LocalDateTime rangeStart,
                                                 LocalDateTime rangeEnd, Pageable pageable);
 
-    EventResponseDto getEventById(Long eventId);
     EventResponseDto getInternalEventById(Long eventId);
     boolean existsById(Long eventId);
     Map<Long, Integer> getConfirmedRequestsCounts(List<Long> eventIds);

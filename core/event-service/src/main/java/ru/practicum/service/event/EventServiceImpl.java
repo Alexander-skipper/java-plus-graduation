@@ -71,8 +71,8 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public EventResponseDto getPublicEvent(Long eventId) {
-        log.info("getPublicEvent() - looking for eventId={} with state PUBLISHED", eventId);
+    public EventResponseDto getPublicEvent(Long eventId, Long userId) {
+        log.info("getPublicEvent() - looking for eventId={} with state PUBLISHED, userId={}", eventId, userId);
 
         Optional<Event> foundEvent = eventRepository.findByIdAndState(eventId, EventState.PUBLISHED);
         if (foundEvent.isEmpty()) {
@@ -90,6 +90,11 @@ public class EventServiceImpl implements EventService {
 
         Event event = foundEvent
                 .orElseThrow(() -> new NoSuchElementException("Event with id " + eventId + " notFound"));
+
+        if (userId != null && userId > 0) {
+            collectorGrpcClient.sendView(userId, eventId);
+            log.info("Sent VIEW action for userId={}, eventId={}", userId, eventId);
+        }
 
         Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
 
@@ -293,18 +298,6 @@ public class EventServiceImpl implements EventService {
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public EventResponseDto getEventById(Long eventId) {
-        log.info("=== getEventById() START ===");
-        log.info("getEventById() - looking for eventId={}", eventId);
-        Event event = findEvent(eventId);
-
-        Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
-
-        EventResponseDto dto = mapper.eventToEventResponseDto(event, getUserShortDto(event.getInitiatorId()));
-        dto.setConfirmedRequests(confirmedRequests.intValue());
-        return dto;
-    }
 
     @Override
     public EventResponseDto getInternalEventById(Long eventId) {
@@ -646,8 +639,11 @@ public class EventServiceImpl implements EventService {
             throw new ConflictException("Cannot like unpublished event");
         }
 
-        Long confirmedRequests = requestClient.countByEventIdAndStatus(eventId, "CONFIRMED");
-        if (confirmedRequests == 0) {
+        boolean isUserRegistered = requestClient.existsByUserIdAndEventIdAndStatus(
+                userId, eventId, "CONFIRMED");
+
+        if (!isUserRegistered) {
+            log.warn("User {} is not registered for event {} (no CONFIRMED request)", userId, eventId);
             throw new ConflictException("You can only like events you are registered for");
         }
 

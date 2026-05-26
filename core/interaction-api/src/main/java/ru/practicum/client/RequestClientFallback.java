@@ -55,4 +55,10 @@ public class RequestClientFallback implements RequestClient {
         log.warn("Request service is unavailable. Returning empty map for batch count.");
         return Map.of();
     }
+
+    @Override
+    public Boolean existsByUserIdAndEventIdAndStatus(Long userId, Long eventId, String status) {
+        log.warn("Request service is unavailable. Returning false for existence check.");
+        return false;
+    }
 }

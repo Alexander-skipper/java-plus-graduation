@@ -20,6 +20,16 @@ public class UserActionProducer {
     public void send(UserActionAvro message) {
         log.info("Sending message to Kafka topic {}: userId={}, eventId={}",
                 topic, message.getUserId(), message.getEventId());
-        kafkaTemplate.send(topic, message.getUserId(), message);
+        kafkaTemplate.send(topic, message.getUserId(), message)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        log.error("Failed to send message to Kafka topic {}: userId={}, eventId={}",
+                                topic, message.getUserId(), message.getEventId(), ex);
+                    } else {
+                        log.debug("Successfully sent message to Kafka topic {}: userId={}, eventId={}, offset={}",
+                                topic, message.getUserId(), message.getEventId(),
+                                result.getRecordMetadata().offset());
+                    }
+                });
     }
 }

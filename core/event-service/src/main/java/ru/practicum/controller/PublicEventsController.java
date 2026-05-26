@@ -14,7 +14,6 @@ import ru.practicum.dto.event.EventResponseDto;
 import ru.practicum.dto.event.EventSearchCriteria;
 import ru.practicum.dto.event.ShortEventResponseDto;
 import ru.practicum.service.event.EventService;
-import ru.practicum.stats.client.CollectorGrpcClient;
 
 
 import java.util.List;
@@ -26,7 +25,6 @@ import java.util.List;
 public class PublicEventsController {
 
     private final EventService service;
-    private final CollectorGrpcClient collectorGrpcClient;
 
     @Value("${stats.service.app-name:event-service}")
     private String appName;
@@ -45,13 +43,8 @@ public class PublicEventsController {
                                      @RequestHeader(value = "X-EWM-USER-ID", required = false)Long userId,
                                      HttpServletRequest req) {
         log.info("Get eventId by id {}, userId={}", id, userId);
-        EventResponseDto res = service.getPublicEvent(id);
 
-        if (userId != null && userId > 0) {
-            collectorGrpcClient.sendView(userId, id);
-            log.info("Sent VIEW action for userId={}, eventId={}", userId, id);
-        }
-        return res;
+        return service.getPublicEvent(id, userId);
     }
 
     @GetMapping("/recommendations")

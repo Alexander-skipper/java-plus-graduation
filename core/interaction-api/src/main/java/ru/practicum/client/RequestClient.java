@@ -39,4 +39,9 @@ public interface RequestClient {
     @GetMapping("/internal/requests/count/batch")
     Map<Long, Long> countByEventIdsAndStatus(@RequestParam List<Long> eventIds,
                                              @RequestParam String status);
+
+    @GetMapping("/internal/requests/exists")
+    Boolean existsByUserIdAndEventIdAndStatus(@RequestParam Long userId,
+                                              @RequestParam Long eventId,
+                                              @RequestParam String status);
 }

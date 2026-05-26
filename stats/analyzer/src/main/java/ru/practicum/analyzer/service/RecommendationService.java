@@ -101,14 +101,14 @@ public class RecommendationService {
             return Collections.emptyList();
         }
 
-        List<UserActionEntity> allActions = userActionRepository.findAll();
+        List<Object[]> results = userActionRepository.sumWeightsByEventIds(eventIds);
 
         Map<Long, Double> eventWeightSums = new HashMap<>();
 
-        for (UserActionEntity action : allActions) {
-            if (eventIds.contains(action.getEventId())) {
-                eventWeightSums.merge(action.getEventId(), action.getWeight(), Double::sum);
-            }
+        for (Object[] row : results) {
+            Long eventId = (Long) row[0];
+            Double weightSum = ((Number) row[1]).doubleValue();
+            eventWeightSums.put(eventId, weightSum);
         }
 
         for (Long eventId : eventIds) {
