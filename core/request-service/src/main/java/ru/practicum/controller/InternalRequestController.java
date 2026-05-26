@@ -45,4 +45,17 @@ public class InternalRequestController {
                 ));
     }
 
+    @GetMapping("/exists")
+    public Boolean existsByUserIdAndEventIdAndStatus(@RequestParam Long userId,
+                                                     @RequestParam Long eventId,
+                                                     @RequestParam String status) {
+        ParticipationRequestStatus requestStatus = ParticipationRequestStatus.valueOf(status);
+        log.info("Internal request: check if user {} has {} request for event {}",
+                userId, requestStatus, eventId);
+
+        return requestRepository.findByRequesterIdAndEventId(userId, eventId)
+                .map(request -> request.getStatus() == requestStatus)
+                .orElse(false);
+    }
+
 }

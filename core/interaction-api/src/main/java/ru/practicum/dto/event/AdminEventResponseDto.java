@@ -48,5 +48,5 @@ public class AdminEventResponseDto {
 
     private String title;
 
-    private Long views;
+    private Double rating;
 }

@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.ResourceAccessException;
 import ru.practicum.client.EventClient;
 import ru.practicum.client.UserClient;
+import ru.practicum.stats.client.CollectorGrpcClient;
 import ru.practicum.dto.event.EventRequestStatusUpdateRequest;
 import ru.practicum.dto.event.EventRequestStatusUpdateResult;
 import ru.practicum.dto.event.EventResponseDto;
@@ -36,6 +37,7 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
     private final ParticipationRequestMapper requestMapper;
     private final UserClient userClient;
     private final EventClient eventClient;
+    private final CollectorGrpcClient collectorGrpcClient;
 
     @Override
     @Transactional
@@ -123,6 +125,16 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
 
         log.info("createRequest() - saving request with status={}", request.getStatus());
         ParticipationRequest savedRequest = requestRepository.save(request);
+
+        log.info("createRequest() - Sending REGISTER action to Collector for userId={}, eventId={}" +
+                        " (ALWAYS, regardless of status)",
+                userId, eventId);
+            collectorGrpcClient.sendRegister(userId, eventId);
+
+        if (savedRequest.getStatus() == ParticipationRequestStatus.CONFIRMED) {
+            log.info("createRequest() - Request was auto-confirmed");
+        }
+
         log.info("=== CREATE REQUEST SUCCESS: requestId={}, status={} ===", savedRequest.getId(), savedRequest.getStatus());
 
         return requestMapper.mapToDto(savedRequest);
@@ -279,6 +291,9 @@ public class ParticipationRequestServiceImpl implements ParticipationRequestServ
                     request.setStatus(ParticipationRequestStatus.CONFIRMED);
                     confirmedRequests.add(requestMapper.mapToDto(request));
                     log.info("updateRequestStatus() - Request {} CONFIRMED", request.getId());
+                    log.info("updateRequestStatus() - Sending REGISTER action to Collector for userId={}, eventId={}",
+                            request.getRequesterId(), eventId);
+                    collectorGrpcClient.sendRegister(request.getRequesterId(), eventId);
                 } else {
                     request.setStatus(ParticipationRequestStatus.REJECTED);
                     rejectedRequests.add(requestMapper.mapToDto(request));

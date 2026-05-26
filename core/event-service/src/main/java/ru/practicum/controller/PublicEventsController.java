@@ -10,15 +10,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.dto.EndpointHitDto;
 import ru.practicum.dto.event.EventResponseDto;
 import ru.practicum.dto.event.EventSearchCriteria;
 import ru.practicum.dto.event.ShortEventResponseDto;
 import ru.practicum.service.event.EventService;
-import ru.practicum.stats.client.StatsClient;
 
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -28,7 +25,6 @@ import java.util.List;
 public class PublicEventsController {
 
     private final EventService service;
-    private final StatsClient statsClient;
 
     @Value("${stats.service.app-name:event-service}")
     private String appName;
@@ -38,17 +34,33 @@ public class PublicEventsController {
     public List<ShortEventResponseDto> findAll(@ModelAttribute EventSearchCriteria criteria, HttpServletRequest req) {
        log.info("Find all events with sort: {}", criteria.getSort());
        List<ShortEventResponseDto> res = service.find(criteria);
-       saveHit(req);
        return res;
     }
 
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public EventResponseDto getEvent(@PathVariable Long id, HttpServletRequest req) {
-        log.info("Get eventId by id {}", id);
-        EventResponseDto res = service.getPublicEvent(id);
-        saveHit(req);
-        return res;
+    public EventResponseDto getEvent(@PathVariable Long id,
+                                     @RequestHeader(value = "X-EWM-USER-ID", required = false)Long userId,
+                                     HttpServletRequest req) {
+        log.info("Get eventId by id {}, userId={}", id, userId);
+
+        return service.getPublicEvent(id, userId);
+    }
+
+    @GetMapping("/recommendations")
+    @ResponseStatus(HttpStatus.OK)
+    public List<ShortEventResponseDto> getRecommendations(@RequestHeader("X-EWM-USER-ID") Long userId,
+                                                          @RequestParam(defaultValue = "10") int maxResults) {
+        log.info("Get recommendations for user {}, maxResults={}", userId, maxResults);
+        return service.getRecommendationsForUser(userId, maxResults);
+    }
+
+    @PutMapping("/{eventId}/like")
+    @ResponseStatus(HttpStatus.OK)
+    public void likeEvent(@PathVariable Long eventId,
+                          @RequestHeader("X-EWM-USER-ID") Long userId) {
+        log.info("User {} likes event {}", userId, eventId);
+        service.likeEvent(userId, eventId);
     }
 
     //!!!!!!!!FEATURE - 3 ЗАДАНИЕ
@@ -60,7 +72,6 @@ public class PublicEventsController {
                                                       HttpServletRequest req) {
 
         log.info("Find events by location {}", locationId);
-        saveHit(req);
         return service.findEventsByLocation(locationId, PageRequest.of(from / size, size, Sort.by("event_date").descending()));
 
     }
@@ -81,14 +92,4 @@ public class PublicEventsController {
     }
     //!!!!!!!!FEATURE - 3 ЗАДАНИЕ
 
-
-    private void saveHit(HttpServletRequest request) {
-        EndpointHitDto endpointHitDto = EndpointHitDto.builder()
-                .app(appName)
-                .uri(request.getRequestURI())
-                .ip(request.getRemoteAddr())
-                .timestamp(LocalDateTime.now())
-                .build();
-        statsClient.hit(endpointHitDto);
-    }
 }

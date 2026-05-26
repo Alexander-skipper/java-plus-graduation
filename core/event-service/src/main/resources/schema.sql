@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS events (
     created_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     category_id BIGINT REFERENCES categories,
     user_id BIGINT,
-    initiator_name VARCHAR(250)
+    initiator_name VARCHAR(250),
+    rating DOUBLE PRECISION DEFAULT 0.0
 );
 
 CREATE TABLE IF NOT EXISTS compilations (
@@ -39,3 +40,5 @@ CREATE TABLE IF NOT EXISTS compilation_events(
     event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     PRIMARY KEY (compilation_id, event_id)
 );
+
+CREATE INDEX idx_events_rating ON events(rating DESC);
